@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import {
   getMotherByQR,
+  getMotherById,
   getChildByQR,
   getAllMothers,
   getAllChildren,
@@ -47,10 +48,22 @@ export default function ScanScreen() {
     setScanned(true);
 
     try {
-      const cleanToken = data.trim();
+      let cleanToken = data.trim();
 
-      // Check if mother QR
-      const mother = await getMotherByQR(cleanToken);
+      // Extract token if embedded inside a URL or query parameter
+      if (cleanToken.includes('token=')) {
+        const match = cleanToken.match(/[?&]token=([^&]+)/);
+        if (match) cleanToken = decodeURIComponent(match[1]);
+      } else if (cleanToken.includes('/m/')) {
+        const parts = cleanToken.split('/m/');
+        if (parts[1]) cleanToken = parts[1].split(/[?#]/)[0];
+      }
+
+      // Check if mother QR or direct UUID
+      let mother = await getMotherByQR(cleanToken);
+      if (!mother) {
+        mother = (await getMotherById(cleanToken)) as any;
+      }
       if (mother) {
         router.push(`/mother/${mother.id}` as any);
         return;

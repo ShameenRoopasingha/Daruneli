@@ -7,11 +7,14 @@ import {
   Linking,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
+import Svg, { Rect } from 'react-native-svg';
 import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 import { RiskBadge } from '../RiskBadge';
 import { MotherWithPregnancy, updateFamilyGps, markMotherReturned } from '@/src/db/motherRepo';
+import { generateQrMatrix } from '@/src/utils/qrMatrix';
 import { COLORS, RADIUS, SHADOWS } from '@/src/theme';
 
 interface MotherProfileHeaderProps {
@@ -52,6 +55,11 @@ export const MotherProfileHeader: React.FC<MotherProfileHeaderProps> = ({
   const { t } = useTranslation();
   const [isLocating, setIsLocating] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
+  const [showClinicQrModal, setShowClinicQrModal] = useState(false);
+
+  const qrMatrix = React.useMemo(() => {
+    return mother.qr_token ? generateQrMatrix(mother.qr_token) : [];
+  }, [mother.qr_token]);
 
   const motherAge = getAge(mother.dob);
   const isTempOut = mother.residency_status === 'TEMP_OUT';
@@ -146,9 +154,13 @@ export const MotherProfileHeader: React.FC<MotherProfileHeaderProps> = ({
         </View>
 
         {mother.qr_token && (
-          <View style={styles.qrBadge}>
-            <Text style={styles.qrBadgeText}>QR: {mother.qr_token}</Text>
-          </View>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.qrBadge}
+            onPress={() => setShowClinicQrModal(true)}
+          >
+            <Text style={styles.qrBadgeText}>🔍 QR: {mother.qr_token}</Text>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -281,6 +293,74 @@ export const MotherProfileHeader: React.FC<MotherProfileHeaderProps> = ({
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Clinic QR Modal */}
+      {showClinicQrModal && (
+        <Modal
+          visible={showClinicQrModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowClinicQrModal(false)}
+        >
+          <View style={styles.qrModalOverlay}>
+            <View style={styles.qrModalCard}>
+              <View style={styles.qrModalHeader}>
+                <Text style={styles.qrModalTitle}>සායනික හඳුනාගැනීමේ QR කේතය</Text>
+                <Text style={styles.qrModalSub}>H512 Clinical Identity QR</Text>
+              </View>
+
+              <View style={styles.qrSvgWrapper}>
+                {qrMatrix.length > 0 && (
+                  <Svg
+                    width={200}
+                    height={200}
+                    viewBox={`0 0 ${qrMatrix.length * 7 + 28} ${qrMatrix.length * 7 + 28}`}
+                  >
+                    <Rect
+                      width={qrMatrix.length * 7 + 28}
+                      height={qrMatrix.length * 7 + 28}
+                      fill="#FFFFFF"
+                    />
+                    {qrMatrix.map((row, r) =>
+                      row.map((col, c) =>
+                        col ? (
+                          <Rect
+                            key={`${r}-${c}`}
+                            x={14 + c * 7}
+                            y={14 + r * 7}
+                            width={7}
+                            height={7}
+                            fill="#000000"
+                          />
+                        ) : null
+                      )
+                    )}
+                  </Svg>
+                )}
+              </View>
+
+              <View style={styles.qrModalTokenBadge}>
+                <Text style={styles.qrModalTokenText}>{mother.qr_token}</Text>
+              </View>
+
+              <View style={styles.qrModalDetails}>
+                <Text style={styles.qrModalName}>{mother.full_name}</Text>
+                {mother.nic ? <Text style={styles.qrModalNic}>NIC: {mother.nic}</Text> : null}
+                <Text style={styles.qrModalInstruction}>
+                  වෙනත් PHM නිලධාරිනියකට මෙම QR කේතය ඇගේ ඇප් එකෙන් ස්කෑන් කළ හැක.
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.qrModalCloseBtn}
+                onPress={() => setShowClinicQrModal(false)}
+              >
+                <Text style={styles.qrModalCloseBtnText}>{t('common.close', 'Close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 };
@@ -529,5 +609,92 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#7E22CE',
+  },
+  qrModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  qrModalCard: {
+    width: '100%',
+    maxWidth: 320,
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.lg,
+    padding: 20,
+    alignItems: 'center',
+    ...SHADOWS.card,
+  },
+  qrModalHeader: {
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  qrModalTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  qrModalSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    marginTop: 2,
+  },
+  qrSvgWrapper: {
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 12,
+  },
+  qrModalTokenBadge: {
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: RADIUS.full,
+    marginBottom: 10,
+  },
+  qrModalTokenText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0D9488',
+    fontFamily: 'monospace',
+  },
+  qrModalDetails: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  qrModalName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  qrModalNic: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  qrModalInstruction: {
+    fontSize: 11,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 10,
+  },
+  qrModalCloseBtn: {
+    width: '100%',
+    backgroundColor: '#0F172A',
+    paddingVertical: 10,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+  },
+  qrModalCloseBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

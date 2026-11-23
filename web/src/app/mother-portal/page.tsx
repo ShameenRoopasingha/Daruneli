@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useMotherPortal } from '@/lib/motherPortalI18n';
 import { DEMO_MOTHER_PORTAL_DATA, MotherPortalData } from '@/lib/motherPortalService';
+import { DigitalClinicCardModal } from '@/components/mother-portal/DigitalClinicCardModal';
 
 export default function MotherHomePage() {
   const { t } = useMotherPortal();
@@ -131,7 +132,13 @@ export default function MotherHomePage() {
         </div>
       </div>
 
-      {/* 2. Upcoming Schedule Card */}
+      {/* 2. Digital Clinic Pass (H512 Scannable QR Code for Midwife visits) */}
+      <DigitalClinicCardModal
+        mother={mother}
+        pogText={`${pregnancy.pogWeeks} ${t.home.weeks}, ${pregnancy.pogDays} ${t.home.days}`}
+      />
+
+      {/* 3. Upcoming Schedule Card */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-400 shrink-0">

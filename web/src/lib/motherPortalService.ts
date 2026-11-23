@@ -3,6 +3,7 @@ import { formatDate } from './dateFormat';
 export interface MotherPortalData {
   mother: {
     id: string;
+    qrToken: string;
     fullName: string;
     nic: string;
     phone: string;
@@ -77,6 +78,7 @@ export interface MotherPortalData {
 export const DEMO_MOTHER_PORTAL_DATA: MotherPortalData = {
   mother: {
     id: 'moth_demo_001',
+    qrToken: 'MOTH-887654322V',
     fullName: 'Inoka Dilhani',
     nic: '917654321V',
     phone: '0771234567',
