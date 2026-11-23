@@ -190,7 +190,9 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
       .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.pmaWeeks)} ${getY(p.value)}`)
       .join(' ');
 
-    const weeksToShow = width > 500
+    const weeksToShow = width > 1000
+      ? [24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]
+      : width > 500
       ? [24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50]
       : [24, 28, 32, 36, 40, 44, 48, 50];
 

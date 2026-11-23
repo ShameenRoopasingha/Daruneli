@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   Dimensions,
   StatusBar,
+  PanResponder,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RADIUS, SHADOWS } from '../../theme';
@@ -29,7 +30,7 @@ export interface ChartZoomModalProps {
   extraContent?: React.ReactNode;
 }
 
-const ZOOM_STEPS = [1.0, 1.5, 2.0, 3.0];
+const ZOOM_STEPS = [1.0, 2.0, 3.0, 4.5, 6.0];
 
 export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
   visible,
@@ -48,13 +49,14 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
   extraContent,
 }) => {
   const [scale, setScale] = useState<number>(initialScale);
+
   const horizontalScrollRef = useRef<any>(null);
   const verticalScrollRef = useRef<any>(null);
 
   const screenWidth = Dimensions.get('window').width;
   const baseWidth = customBaseWidth || Math.max(320, screenWidth - 28);
 
-  const chartHeight = Math.round(baseHeight * (1 + (scale - 1) * 0.35));
+  const chartHeight = Math.round(baseHeight * (1 + (scale - 1) * 0.3));
   const hasStickyAxis = typeof renderYAxis === 'function' && typeof renderPlot === 'function';
 
   // If sticky Y-axis is active, plot width expands from (baseWidth - yAxisWidth)
@@ -62,18 +64,84 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
     ? Math.round((baseWidth - yAxisWidth) * scale)
     : Math.round(baseWidth * scale);
 
+  // Gesture handler with closure state for pinch-to-zoom
+  const [gestureHandler] = useState(() => {
+    let initialDistance = 0;
+    let initialScaleVal = initialScale;
+    let lastTapTimestamp = 0;
+    let currentScaleVal = initialScale;
+
+    const responder = PanResponder.create({
+      onStartShouldSetPanResponder: (evt) => {
+        // Double-tap with 1 finger to quick toggle zoom
+        if (evt.nativeEvent.touches.length === 1) {
+          const now = evt.nativeEvent.timestamp || 0;
+          if (lastTapTimestamp > 0 && now - lastTapTimestamp < 280) {
+            setScale((prev) => (prev < 2.5 ? 3.5 : 1.0));
+            lastTapTimestamp = 0;
+          } else {
+            lastTapTimestamp = now;
+          }
+        }
+        return false;
+      },
+      onMoveShouldSetPanResponderCapture: (evt) => {
+        // Capture ONLY when 2 or more touches are present (two fingertips pinching)
+        return evt.nativeEvent.touches.length >= 2;
+      },
+      onMoveShouldSetPanResponder: (evt) => {
+        return evt.nativeEvent.touches.length >= 2;
+      },
+      onPanResponderGrant: (evt) => {
+        if (evt.nativeEvent.touches.length >= 2) {
+          const t0 = evt.nativeEvent.touches[0];
+          const t1 = evt.nativeEvent.touches[1];
+          const dx = t0.pageX - t1.pageX;
+          const dy = t0.pageY - t1.pageY;
+          initialDistance = Math.hypot(dx, dy);
+          initialScaleVal = currentScaleVal;
+        }
+      },
+      onPanResponderMove: (evt) => {
+        if (evt.nativeEvent.touches.length >= 2 && initialDistance > 0) {
+          const t0 = evt.nativeEvent.touches[0];
+          const t1 = evt.nativeEvent.touches[1];
+          const dx = t0.pageX - t1.pageX;
+          const dy = t0.pageY - t1.pageY;
+          const currentDistance = Math.hypot(dx, dy);
+          const ratio = currentDistance / initialDistance;
+          const targetScale = +(initialScaleVal * ratio).toFixed(1);
+          const clamped = Math.min(6.0, Math.max(1.0, targetScale));
+          setScale(clamped);
+        }
+      },
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderRelease: () => {
+        initialDistance = 0;
+      },
+      onPanResponderTerminate: () => {
+        initialDistance = 0;
+      },
+    });
+
+    return {
+      instance: responder,
+      updateCurrentScale: (s: number) => {
+        currentScaleVal = s;
+      },
+    };
+  });
+
+  useEffect(() => {
+    gestureHandler.updateCurrentScale(scale);
+  }, [scale, gestureHandler]);
+
   const handleZoomIn = () => {
-    const nextIdx = ZOOM_STEPS.findIndex((s) => s > scale);
-    if (nextIdx !== -1) {
-      setScale(ZOOM_STEPS[nextIdx]);
-    }
+    setScale((prev) => Math.min(6.0, +(prev + 0.5).toFixed(1)));
   };
 
   const handleZoomOut = () => {
-    const prevSteps = ZOOM_STEPS.filter((s) => s < scale);
-    if (prevSteps.length > 0) {
-      setScale(prevSteps[prevSteps.length - 1]);
-    }
+    setScale((prev) => Math.max(1.0, +(prev - 0.5).toFixed(1)));
   };
 
   const handleReset = () => {
@@ -128,19 +196,19 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
         <View style={styles.toolbar}>
           <View style={styles.zoomGroup}>
             <TouchableOpacity
-              style={[styles.stepBtn, scale <= ZOOM_STEPS[0] && styles.stepBtnDisabled]}
+              style={[styles.stepBtn, scale <= 1.0 && styles.stepBtnDisabled]}
               onPress={handleZoomOut}
-              disabled={scale <= ZOOM_STEPS[0]}
+              disabled={scale <= 1.0}
               accessibilityLabel="Zoom Out"
             >
-              <Text style={[styles.stepBtnText, scale <= ZOOM_STEPS[0] && styles.stepBtnTextDisabled]}>
+              <Text style={[styles.stepBtnText, scale <= 1.0 && styles.stepBtnTextDisabled]}>
                 −
               </Text>
             </TouchableOpacity>
 
             <View style={styles.presetChips}>
               {ZOOM_STEPS.map((step) => {
-                const isActive = Math.abs(step - scale) < 0.05;
+                const isActive = Math.abs(step - scale) < 0.25;
                 return (
                   <TouchableOpacity
                     key={`step-${step}`}
@@ -156,23 +224,20 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
             </View>
 
             <TouchableOpacity
-              style={[
-                styles.stepBtn,
-                scale >= ZOOM_STEPS[ZOOM_STEPS.length - 1] && styles.stepBtnDisabled,
-              ]}
+              style={[styles.stepBtn, scale >= 6.0 && styles.stepBtnDisabled]}
               onPress={handleZoomIn}
-              disabled={scale >= ZOOM_STEPS[ZOOM_STEPS.length - 1]}
+              disabled={scale >= 6.0}
               accessibilityLabel="Zoom In"
             >
-              <Text
-                style={[
-                  styles.stepBtnText,
-                  scale >= ZOOM_STEPS[ZOOM_STEPS.length - 1] && styles.stepBtnTextDisabled,
-                ]}
-              >
+              <Text style={[styles.stepBtnText, scale >= 6.0 && styles.stepBtnTextDisabled]}>
                 +
               </Text>
             </TouchableOpacity>
+
+            {/* Live Scale Indicator */}
+            <View style={styles.liveScalePill}>
+              <Text style={styles.liveScaleText}>{scale.toFixed(1)}x</Text>
+            </View>
           </View>
 
           <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
@@ -183,7 +248,7 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
         {/* User Navigation Hint */}
         <View style={styles.hintBar}>
           <Text style={styles.hintText}>
-            💡 විශාලනය: <Text style={{ fontWeight: '800' }}>{scale}x</Text> • ප්‍රස්ථාරය හරහා බැලීමට වමට/දකුණට අනුචලනය කරන්න (Pan) • ලකුණු මත තට්ටු කර විස්තර බලන්න
+            👆 <Text style={{ fontWeight: '800' }}>ඇඟිලි තුඩු දෙකකින් විශාලනය කරන්න (Pinch to Zoom)</Text> • 1 ඇඟිල්ලෙන් අනුචලනය කරන්න (Pan) • දෙවරක් තට්ටු කරන්න (Double-tap)
           </Text>
         </View>
 
@@ -194,8 +259,8 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
           contentContainerStyle={styles.verticalContent}
           showsVerticalScrollIndicator={true}
         >
-          {/* Chart Canvas Card with Sticky Y-Axis or Standard Horizontal Pan */}
-          <View style={styles.chartCard}>
+          {/* Chart Canvas Card with PanResponder for Pinch-to-Zoom */}
+          <View {...gestureHandler.instance.panHandlers} style={styles.chartCard}>
             {hasStickyAxis ? (
               <View style={styles.stickyChartRow}>
                 {/* Fixed Sticky Y-Axis Column (never scrolls off screen!) */}
@@ -329,8 +394,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   stepBtn: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderRadius: RADIUS.sm,
     backgroundColor: '#0D9488',
     alignItems: 'center',
@@ -356,8 +421,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   chip: {
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
     borderRadius: 4,
   },
   chipActive: {
@@ -372,9 +437,23 @@ const styles = StyleSheet.create({
   chipTextActive: {
     color: '#FFFFFF',
   },
+  liveScalePill: {
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: RADIUS.sm,
+    marginLeft: 2,
+  },
+  liveScaleText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0F766E',
+  },
   resetBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     borderRadius: RADIUS.sm,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
@@ -389,11 +468,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDFA',
     borderBottomWidth: 1,
     borderBottomColor: '#CCFBF1',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 6,
   },
   hintText: {
-    fontSize: 10.5,
+    fontSize: 10,
     color: '#0F766E',
     fontWeight: '500',
   },
@@ -402,7 +481,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   verticalContent: {
-    padding: 12,
+    padding: 10,
     paddingBottom: 40,
   },
   chartCard: {

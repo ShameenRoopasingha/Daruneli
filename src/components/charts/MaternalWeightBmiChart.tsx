@@ -174,9 +174,11 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
       .map((v, i) => `${i === 0 ? 'M' : 'L'} ${getX(v.poaWeeks!)} ${getY(v.gainKg)}`)
       .join(' ');
 
-    const weeksToShow = width > 500
+    const weeksToShow = width > 1000
       ? [12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40]
-      : sampleWeeks;
+      : width > 500
+      ? [12, 16, 20, 24, 28, 32, 36, 40]
+      : [12, 16, 20, 28, 36, 40];
 
     return (
       <Svg width={width} height={height}>

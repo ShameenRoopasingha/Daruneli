@@ -260,7 +260,9 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
       .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.x)} ${getY(p.y)}`)
       .join(' ');
 
-    const xMonths = w > 500
+    const xMonths = w > 1000
+      ? [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60]
+      : w > 500
       ? [0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60]
       : [0, 12, 24, 36, 48, 60];
 
