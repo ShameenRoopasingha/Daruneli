@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Stethoscope, ShieldCheck, ArrowRight, Lock, Mail, AlertCircle } from 'lucide-react';
 import { isDemoMode, createClient } from '@/lib/supabase/client';
 import { useLanguage } from '@/lib/i18n';
@@ -78,14 +79,18 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8">
         {/* Emblem & Branding */}
         <div className="text-center mb-6">
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-teal-700 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-teal-700/30 mb-3">
-            <Stethoscope className="w-8 h-8" />
+          <div className="relative w-64 h-32 mx-auto mb-2">
+            <Image
+              src="/images/daruneli-logo.png"
+              alt="Daruneli Logo"
+              fill
+              sizes="256px"
+              className="object-contain"
+              priority
+            />
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            Daruneli • MOH Portal
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Maternal & Child Health Supervision System
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-semibold tracking-wide uppercase">
+            MOH &amp; PHNS Supervision Portal
           </p>
           <div className="inline-flex items-center gap-1.5 mt-2.5 px-3 py-1 rounded-full bg-teal-50 dark:bg-teal-950/80 border border-teal-200 dark:border-teal-800 text-[11px] font-semibold text-teal-800 dark:text-teal-300">
             <ShieldCheck className="w-3.5 h-3.5" />
@@ -162,9 +167,14 @@ export default function LoginPage() {
           <span>🚀 Enter Offline Demo Dashboard (Maharagama MOH)</span>
         </button>
 
-        <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 mt-5">
-          Government of Sri Lanka • Ministry of Health & Family Health Bureau
-        </p>
+        <div className="text-center mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-0.5">
+          <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+            MINISTRY OF HEALTH, SRI LANKA
+          </p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+            Powered by Bitgard Pvt Ltd
+          </p>
+        </div>
       </div>
     </div>
   );

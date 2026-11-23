@@ -3,7 +3,7 @@ import './globals.css';
 import { LanguageProvider } from '@/lib/i18n';
 
 export const metadata: Metadata = {
-  title: 'Daruneli • MOH & PHNS Supervision Portal',
+  title: 'Daruneli | Maternal & Child Health Supervision Portal',
   description: 'National Maternal & Child Health Supervision Web Portal for MOH & PHNS Officers in Sri Lanka',
 };
 

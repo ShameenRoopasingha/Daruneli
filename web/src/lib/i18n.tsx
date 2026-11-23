@@ -130,7 +130,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
-    const saved = localStorage.getItem('suwa_web_lang') as Language;
+    const saved = (localStorage.getItem('daruneli_web_lang') || localStorage.getItem('suwa_web_lang')) as Language;
     if (saved === 'en' || saved === 'si') {
       setLanguageState(saved);
     }
@@ -138,7 +138,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem('suwa_web_lang', lang);
+    localStorage.setItem('daruneli_web_lang', lang);
   };
 
   const t = (key: string): string => {

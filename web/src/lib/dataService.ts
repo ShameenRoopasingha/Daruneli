@@ -26,12 +26,12 @@ import {
 } from './types';
 
 // In-memory / localStorage storage for supervision notes created in Demo Mode
-const DEMO_NOTES_KEY = 'suwa_demo_supervision_notes';
+const DEMO_NOTES_KEY = 'daruneli_demo_supervision_notes';
 
 function getDemoNotes(): Record<string, any[]> {
   if (typeof window === 'undefined') return {};
   try {
-    const raw = localStorage.getItem(DEMO_NOTES_KEY);
+    const raw = localStorage.getItem(DEMO_NOTES_KEY) || localStorage.getItem('suwa_demo_supervision_notes');
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};

@@ -10,6 +10,7 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -87,16 +88,14 @@ export default function LoginScreen() {
 
         {/* Brand Header */}
         <View style={styles.brandContainer}>
-          <View style={styles.brandEmblemCircle}>
-            <Text style={styles.brandEmblem}>🩺</Text>
-          </View>
-          <Text style={styles.brandTitle}>දරුනැළි (DaruNali)</Text>
+          <Image
+            source={require('@/assets/images/daruneli-logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.brandSubtitle}>
-            {t('app.tagline', 'Public Health Midwife Digital Field Companion')}
+            A Digital Health Platform for Public Health Midwives (PHM)
           </Text>
-          <View style={styles.mohBadge}>
-            <Text style={styles.mohText}>Ministry of Health • Sri Lanka</Text>
-          </View>
         </View>
 
         {/* Login Card */}
@@ -187,6 +186,17 @@ export default function LoginScreen() {
             </View>
           )}
         </View>
+
+        {/* Ministry of Health & Bitgard Footer */}
+        <View style={styles.footerBrand}>
+          <Image
+            source={require('@/assets/images/sri-lanka-emblem.png')}
+            style={styles.footerEmblem}
+            resizeMode="contain"
+          />
+          <Text style={styles.footerMinistry}>MINISTRY OF HEALTH, SRI LANKA</Text>
+          <Text style={styles.footerBitgard}>Powered by Bitgard Pvt Ltd</Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -228,32 +238,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  brandEmblemCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: COLORS.primaryLight,
-    borderWidth: 1,
-    borderColor: COLORS.primaryBorder,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  brandEmblem: {
-    fontSize: 30,
-  },
-  brandTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: COLORS.primaryDeep,
-    letterSpacing: -0.6,
+  logoImage: {
+    width: 250,
+    height: 125,
+    marginBottom: 8,
   },
   brandSubtitle: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
+    fontSize: 12.5,
+    color: '#1E293B',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 2,
+    fontWeight: '600',
+  },
+  footerBrand: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 28,
+    marginBottom: 12,
+  },
+  footerEmblem: {
+    width: 26,
+    height: 30,
+    marginBottom: 6,
+    opacity: 0.8,
+  },
+  footerMinistry: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  footerBitgard: {
+    fontSize: 10.5,
     fontWeight: '500',
+    color: '#64748B',
   },
   mohBadge: {
     backgroundColor: COLORS.risk.green.bg,

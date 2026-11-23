@@ -1,5 +1,5 @@
 /**
- * Suwa PHM Advance Programme & Weekly Timetable Calculation Engine
+ * Daruneli PHM Advance Programme & Weekly Timetable Calculation Engine
  *
  * Pure TypeScript functions with 100% offline local evaluation.
  */

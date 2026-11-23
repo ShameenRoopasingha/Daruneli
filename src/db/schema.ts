@@ -1,4 +1,4 @@
-// SQLite Database Schema for Suwa PHM App
+// SQLite Database Schema for Daruneli PHM App
 // All tables use UUID v4 primary keys, soft-delete timestamps, and sync metadata (phm_area_id, is_dirty)
 
 export const DEFAULT_PHM_AREA_ID = 'a0000001-0000-0000-0000-000000000001';

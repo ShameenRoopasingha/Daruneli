@@ -5,7 +5,7 @@ import en from './en.json';
 import si from './si.json';
 import ta from './ta.json';
 
-export const LANGUAGE_STORAGE_KEY = 'suwa_preferred_language';
+export const LANGUAGE_STORAGE_KEY = 'daruneli_preferred_language';
 
 // eslint-disable-next-line import/no-named-as-default-member
 void i18n.use(initReactI18next).init({
@@ -23,10 +23,14 @@ void i18n.use(initReactI18next).init({
 
 // Load persisted language asynchronously on startup
 AsyncStorage.getItem(LANGUAGE_STORAGE_KEY)
-  .then((savedLang) => {
-    if (savedLang === 'si' || savedLang === 'en' || savedLang === 'ta') {
+  .then(async (savedLang) => {
+    let lang = savedLang;
+    if (!lang) {
+      lang = await AsyncStorage.getItem('suwa_preferred_language');
+    }
+    if (lang === 'si' || lang === 'en' || lang === 'ta') {
       // eslint-disable-next-line import/no-named-as-default-member
-      void i18n.changeLanguage(savedLang);
+      void i18n.changeLanguage(lang);
     }
   })
   .catch(() => {});

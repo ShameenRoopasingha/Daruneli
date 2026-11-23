@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -89,20 +90,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className="p-5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-700 to-teal-500 flex items-center justify-center text-white shadow-md shadow-teal-700/20">
-              <Stethoscope className="w-6 h-6" />
+            <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+              <Image
+                src="/images/daruneli-icon.png"
+                alt="Daruneli"
+                fill
+                sizes="40px"
+                className="object-contain p-0.5"
+              />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">
-                  Daruneli MOH
+                <span className="font-black text-sm tracking-tight text-slate-900 dark:text-white uppercase truncate">
+                  DARUNELI
                 </span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-300">
-                  SL-FHB
+                  {CURRENT_USER.role}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-                MOH Division Portal
+              <p className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 truncate">
+                දරුනැලි • FHB Sri Lanka
               </p>
             </div>
           </div>

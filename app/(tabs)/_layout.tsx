@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { COLORS } from '@/src/theme';
 
@@ -56,7 +56,18 @@ export default function TabLayout() {
         name="index"
         options={{
           title: t('tabs.dashboard', 'Today'),
-          headerTitle: t('dashboard.headerTitle', 'දරුනැළි • අද දින'),
+          headerTitle: () => (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+              <Image
+                source={require('@/assets/images/icon.png')}
+                style={{ width: 32, height: 32, borderRadius: 8 }}
+                resizeMode="contain"
+              />
+              <Text style={{ fontSize: 17, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.3 }}>
+                {t('dashboard.headerTitle', 'දරුනැලි • අද දින')}
+              </Text>
+            </View>
+          ),
           tabBarIcon: ({ focused }) => <TabIcon icon="📋" label="Today" focused={focused} />,
         }}
       />

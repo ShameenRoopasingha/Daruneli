@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "දරුනැළි",
-    "slug": "Daruneli",
+    "name": "Daruneli",
+    "slug": "daruneli",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -12,10 +12,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "monochromeImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -35,14 +35,14 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#F4FAF8"
         }
       ],
       "expo-sqlite",
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow දරුනැළි to access your camera to scan Mother and Child QR health records."
+          "cameraPermission": "Allow Daruneli (දරුනැලි) to access your camera to scan Mother and Child QR health records."
         }
       ],
       "expo-secure-store",

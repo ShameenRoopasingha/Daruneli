@@ -1,5 +1,5 @@
 /**
- * Suwa Clinical Engine — Barrel Export
+ * Daruneli Clinical Engine — Barrel Export
  *
  * Pure TypeScript modules with zero external dependencies.
  * All logic runs 100% locally on-device.

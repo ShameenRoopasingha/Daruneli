@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Printer,
   Download,
@@ -206,6 +207,27 @@ export default function H509ReportsPage() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-lg p-6 sm:p-10 space-y-8 text-slate-900 dark:text-white max-w-5xl mx-auto print:shadow-none print:border-none print:p-0">
           {/* Document Header (Bilingual Official Sri Lankan Format) */}
           <div className="border-b-2 border-slate-900 dark:border-slate-300 pb-5 text-center">
+            {/* Top Brand Strip for Web and Print */}
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-700">
+              <div className="relative w-44 h-16">
+                <Image
+                  src="/images/daruneli-logo.png"
+                  alt="Daruneli Maternal & Child Health System"
+                  fill
+                  sizes="176px"
+                  className="object-contain object-left"
+                />
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] font-black tracking-wider text-teal-800 dark:text-teal-400 uppercase block">
+                  DARUNELI DIGITAL HEALTH SYSTEM
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium">
+                  Form H509 Return • Powered by Bitgard Pvt Ltd
+                </span>
+              </div>
+            </div>
+
             <div className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
               ශ්‍රී ලංකා ප්‍රජාතාන්ත්‍රික සමාජවාදී ජනරජය • සෞඛ්‍ය අමාත්‍යාංශය • පවුල් සෞඛ්‍ය කාර්යාංශය
             </div>

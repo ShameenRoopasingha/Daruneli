@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Migration: 001_phm_sync_schema.sql
--- Description: Suwa PHM Bidirectional Offline-to-Cloud Sync Schema with RLS
+-- Description: Daruneli PHM Bidirectional Offline-to-Cloud Sync Schema with RLS
 -- PostgreSQL / Supabase Compatible
 -- =============================================================================
 

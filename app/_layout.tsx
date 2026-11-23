@@ -1,7 +1,7 @@
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, AppState, AppStateStatus, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, AppState, AppStateStatus, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import 'react-native-reanimated';
@@ -12,6 +12,7 @@ import { seedDatabase } from '@/src/db/seed';
 import { COLORS, RADIUS, SHADOWS } from '@/src/theme/tokens';
 import { isLockEnabled, hasPinSet, shouldLockApp } from '@/src/security/authLock';
 import { AppLockScreen } from '@/src/components/AppLockScreen';
+import { BrandLoadingScreen } from '@/src/components/BrandLoadingScreen';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -55,14 +56,15 @@ export default function RootLayout() {
     let mounted = true;
     async function prepare() {
       try {
+        await SplashScreen.hideAsync().catch(() => {});
         await getDatabase();
         await seedDatabase(false);
+        // Subtle grace period so users experience the crisp animated brand loader
+        await new Promise((r) => setTimeout(r, 650));
         if (mounted) setDbReady(true);
       } catch (e: any) {
         console.error('Initialization error:', e);
         if (mounted) setInitError(e?.message || 'Database initialization failed');
-      } finally {
-        await SplashScreen.hideAsync().catch(() => {});
       }
     }
 
@@ -85,9 +87,9 @@ export default function RootLayout() {
   };
 
   if (!dbReady) {
-    return (
-      <View style={styles.loadingContainer}>
-        {initError ? (
+    if (initError) {
+      return (
+        <View style={styles.loadingContainer}>
           <View style={styles.errorBox}>
             <Text style={styles.errorIcon}>⚠️</Text>
             <Text style={styles.errorTitle}>
@@ -104,15 +106,15 @@ export default function RootLayout() {
               </Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={styles.loadingText}>
-              දරුනැළි (DaruNali) - {t('common.syncing', 'දත්ත පද්ධතිය සක්‍රිය වෙමින් පවතී...')}
-            </Text>
-          </>
-        )}
-      </View>
+        </View>
+      );
+    }
+
+    return (
+      <BrandLoadingScreen
+        messageSi="පද්ධතිය සක්‍රීය වෙමින් පවතී..."
+        messageEn="Loading System..."
+      />
     );
   }
 

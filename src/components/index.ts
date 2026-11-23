@@ -11,6 +11,7 @@ export * from './AppLockScreen';
 export * from './TransferMotherModal';
 export * from './VoiceNoteRecorder';
 export * from './PinSetupModal';
+export * from './BrandLoadingScreen';
 export * from './charts';
 export * from './mother';
 export * from './schedule';

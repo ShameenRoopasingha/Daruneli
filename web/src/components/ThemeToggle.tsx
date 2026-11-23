@@ -7,7 +7,7 @@ export const ThemeToggle: React.FC = () => {
   const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem('suwa_theme');
+    const saved = localStorage.getItem('daruneli_theme') || localStorage.getItem('suwa_theme');
     if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       setIsDark(true);
       document.documentElement.classList.add('dark');
@@ -20,11 +20,11 @@ export const ThemeToggle: React.FC = () => {
   const toggleTheme = () => {
     if (isDark) {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('suwa_theme', 'light');
+      localStorage.setItem('daruneli_theme', 'light');
       setIsDark(false);
     } else {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('suwa_theme', 'dark');
+      localStorage.setItem('daruneli_theme', 'dark');
       setIsDark(true);
     }
   };

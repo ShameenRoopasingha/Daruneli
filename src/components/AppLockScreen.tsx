@@ -5,10 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   Vibration,
+  Image,
   SafeAreaView,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { COLORS, RADIUS, SHADOWS } from '@/src/theme';
+import { COLORS, SHADOWS } from '@/src/theme';
 import {
   verifyPin,
   canAuthenticateWithBiometrics,
@@ -87,11 +88,13 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({ onUnlocked }) => {
       <StatusBar style="light" />
 
       <View style={styles.headerArea}>
-        <View style={styles.shieldIconWrapper}>
-          <Text style={styles.shieldIcon}>🛡️</Text>
-        </View>
-        <Text style={styles.appTitle}>දරුනැළි • ආරක්ෂිත පිවිසුම</Text>
-        <Text style={styles.subtitle}>Daruneli PHM Companion • Security Lock</Text>
+        <Image
+          source={require('@/assets/images/icon.png')}
+          style={styles.brandIcon}
+          resizeMode="contain"
+        />
+        <Text style={styles.appTitle}>DARUNELI • දරුනැලි</Text>
+        <Text style={styles.subtitle}>PHM Companion • Security Lock</Text>
       </View>
 
       {/* 4-Digit PIN Indicator Dots */}
@@ -212,19 +215,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
   },
-  shieldIconWrapper: {
-    width: 64,
-    height: 64,
-    borderRadius: RADIUS.full,
-    backgroundColor: 'rgba(13, 148, 136, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  brandIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
     marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-  },
-  shieldIcon: {
-    fontSize: 32,
   },
   appTitle: {
     fontSize: 20,

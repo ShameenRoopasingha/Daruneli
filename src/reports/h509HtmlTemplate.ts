@@ -1,4 +1,5 @@
 import type { H509ReportData } from './h509Aggregator';
+import { DARUNELI_ICON_BASE64 } from './logoBase64';
 
 export function renderH509Html(data: H509ReportData): string {
   const { metadata, section1_antenatal, section2_deliveries, section3_childHealth, section4_immunizations, section5_priorityFollowUp } = data;
@@ -183,7 +184,20 @@ export function renderH509Html(data: H509ReportData): string {
 
   <!-- HEADER -->
   <div class="header-block">
-    <div class="crest">🏛️</div>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+      <tr>
+        <td style="width: 44px; vertical-align: middle; text-align: left;">
+          <img src="${DARUNELI_ICON_BASE64}" width="40" height="40" style="border-radius: 8px; display: block;" alt="Daruneli" />
+        </td>
+        <td style="vertical-align: middle; text-align: left; padding-left: 10px;">
+          <div style="font-size: 11pt; font-weight: 900; color: #0F766E; letter-spacing: 0.6px;">DARUNELI — MATERNAL &amp; CHILD HEALTH SYSTEM</div>
+          <div style="font-size: 8.5pt; font-weight: 600; color: #64748B;">National Digital Health Platform for Public Health Midwives (PHM)</div>
+        </td>
+        <td style="vertical-align: middle; text-align: right; width: 60px;">
+          <div style="font-size: 18pt; line-height: 1;">🇱🇰</div>
+        </td>
+      </tr>
+    </table>
     <div class="gov-title">Ministry of Health • Family Health Bureau • Sri Lanka</div>
     <div class="sub-title">මහජන සෞඛ්‍ය මෙහෙවරිය මාසික සාරාංශ වාර්තාව | Form H-509 Return</div>
     <div class="form-title">FORM H509: PHM MONTHLY SUMMARY RETURN</div>
@@ -414,7 +428,7 @@ export function renderH509Html(data: H509ReportData): string {
   </div>
 
   <div class="watermark">
-    Generated automatically via Daruneli (දරුනැළි) Offline-First PHM Digital System on ${metadata.generatedAt}. Form H509 Compliant.
+    Generated automatically via Daruneli (දරුනැලි) Offline-First PHM Digital System on ${metadata.generatedAt}. Form H509 Compliant. • Powered by Bitgard Pvt Ltd
   </div>
 
 </body>
