@@ -96,12 +96,12 @@ export async function seedDatabase(force: boolean = false, dbInstance?: SQLiteDa
   await db.execAsync(`
     INSERT INTO mothers (id, family_id, qr_token, full_name, nic, dob, phone, blood_group, chronic_conditions_json, fertility_treatment_history, prev_miscarriages_count, prev_stillbirths_count, prev_c_sections_count, planning_pregnancy, created_at, updated_at)
     VALUES
-      ('${SEED_IDS.M1}', '${SEED_IDS.F1}', 'M-QR-0001', 'Nimali Perera', '887654321V', '1989-03-15', '0771122334', 'A+', '[]', 1, 0, 0, 0, 0, '${now}', '${now}'),
-      ('${SEED_IDS.M2}', '${SEED_IDS.F2}', 'M-QR-0002', 'Kamala Silva', '917654321V', '1991-07-22', '0772233445', 'B+', '["HYPERTENSION"]', 0, 3, 0, 0, 0, '${now}', '${now}'),
-      ('${SEED_IDS.M3}', '${SEED_IDS.F3}', 'M-QR-0003', 'Sachini Fernando', '200712345V', '2007-01-10', '0773344556', 'O+', '["THYROID"]', 0, 1, 0, 0, 0, '${now}', '${now}'),
-      ('${SEED_IDS.M4}', '${SEED_IDS.F4}', 'M-QR-0004', 'Dilini Jayawardena', '957654321V', '1995-11-28', '0774455667', 'AB+', '[]', 0, 0, 0, 0, 0, '${now}', '${now}'),
-      ('${SEED_IDS.M5}', '${SEED_IDS.F5}', 'M-QR-0005', 'Iresha Bandara', '887654322V', '1988-09-05', '0775566778', 'A-', '["DIABETES","HEART_DISEASE"]', 0, 0, 1, 0, 0, '${now}', '${now}'),
-      ('${SEED_IDS.M6}', '${SEED_IDS.F6}', 'M-QR-0006', 'Thilini Rathnayake', '1991765432', '1991-06-18', '0776677889', 'B-', '["PCOS"]', 0, 0, 0, 1, 0, '${now}', '${now}');
+      ('${SEED_IDS.M1}', '${SEED_IDS.F1}', 'MOTH-887654321V', 'Nimali Perera', '887654321V', '1989-03-15', '0771122334', 'A+', '[]', 1, 0, 0, 0, 0, '${now}', '${now}'),
+      ('${SEED_IDS.M2}', '${SEED_IDS.F2}', 'MOTH-917654321V', 'Kamala Silva', '917654321V', '1991-07-22', '0772233445', 'B+', '["HYPERTENSION"]', 0, 3, 0, 0, 0, '${now}', '${now}'),
+      ('${SEED_IDS.M3}', '${SEED_IDS.F3}', 'MOTH-200712345V', 'Sachini Fernando', '200712345V', '2007-01-10', '0773344556', 'O+', '["THYROID"]', 0, 1, 0, 0, 0, '${now}', '${now}'),
+      ('${SEED_IDS.M4}', '${SEED_IDS.F4}', 'MOTH-957654321V', 'Dilini Jayawardena', '957654321V', '1995-11-28', '0774455667', 'AB+', '[]', 0, 0, 0, 0, 0, '${now}', '${now}'),
+      ('${SEED_IDS.M5}', '${SEED_IDS.F5}', 'MOTH-887654322V', 'Iresha Bandara', '887654322V', '1988-09-05', '0775566778', 'A-', '["DIABETES","HEART_DISEASE"]', 0, 0, 1, 0, 0, '${now}', '${now}'),
+      ('${SEED_IDS.M6}', '${SEED_IDS.F6}', 'MOTH-1991765432', 'Thilini Rathnayake', '1991765432', '1991-06-18', '0776677889', 'B-', '["PCOS"]', 0, 0, 0, 1, 0, '${now}', '${now}');
   `);
 
   // 3. Pregnancies

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, isAdminConfigured } from '@/lib/supabaseAdmin';
+import { CreateInviteSchema } from '@/lib/validations';
 
 // Character set excluding ambiguous characters (0, O, 1, I)
 const CHARSET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -14,16 +15,26 @@ function generateInviteCode(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const motherId = String(body.mother_id || '').trim();
-    const phmAreaId = String(body.phm_area_id || '').trim();
-
-    if (!motherId) {
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
       return NextResponse.json(
-        { success: false, message: 'mother_id is required.' },
+        { success: false, message: 'Invalid JSON request payload.' },
         { status: 400 }
       );
     }
+
+    const parseResult = CreateInviteSchema.safeParse(rawBody);
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      return NextResponse.json(
+        { success: false, message: issue?.message || 'Invalid invite request parameters.' },
+        { status: 400 }
+      );
+    }
+
+    const { motherId, phmAreaId } = parseResult.data;
 
     // Demo Mode fallback
     if (!isAdminConfigured()) {

@@ -10,6 +10,7 @@ import {
   verifyDemoMotherCredentials,
   getDemoMotherPortalData,
 } from '@/lib/demoMothers';
+import { PinLoginSchema } from '@/lib/validations';
 
 // In-memory rate limiting map: ip:identifier -> { attempts, resetAt }
 const rateLimitMap = new Map<string, { attempts: number; resetAt: number }>();
@@ -38,22 +39,40 @@ function clearRateLimit(key: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const rawIdentifier = String(body.identifier || '').trim();
-    const pin = String(body.pin || '').trim();
-    const isExplicitDemo = body.is_demo === true;
-
-    // 1. Strict Input Sanitization
-    const sanitizedId = sanitizeIdentifier(rawIdentifier);
-    if (!isExplicitDemo && (!sanitizedId || !/^\d{4}$/.test(pin))) {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
       return NextResponse.json(
         {
           success: false,
-          message: 'Please provide a valid registered Phone/NIC and 4-digit PIN.',
+          message: 'Invalid JSON request payload.',
         },
         { status: 400 }
       );
     }
+
+    const parseResult = PinLoginSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      return NextResponse.json(
+        {
+          success: false,
+          message: issue?.message || 'Please provide a valid registered Phone/NIC and 4-digit PIN.',
+        },
+        { status: 400 }
+      );
+    }
+
+    const rawIdentifier = String(
+      parseResult.data.identifier || parseResult.data.nic || parseResult.data.phone || ''
+    ).trim();
+    const pin = String(parseResult.data.pin || '').trim();
+    const isExplicitDemo = parseResult.data.is_demo === true;
+
+    // 1. Strict Input Sanitization
+    const sanitizedId = sanitizeIdentifier(rawIdentifier);
 
     const ip = req.headers.get('x-forwarded-for') || 'unknown';
     const rateLimitKey = `${ip}:${(sanitizedId || 'demo').toLowerCase()}`;

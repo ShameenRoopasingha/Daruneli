@@ -202,9 +202,59 @@ export async function getMotherById(id: string): Promise<MotherWithPregnancy | n
 }
 
 export async function getMotherByQR(qrToken: string): Promise<Mother | null> {
+  if (!qrToken) return null;
   const db = await getDatabase();
+  const token = qrToken.trim();
+
+  // 1. Direct match on qr_token
+  let mother = await db.getFirstAsync<Mother>(
+    'SELECT * FROM mothers WHERE qr_token = ? AND deleted_at IS NULL', [token]
+  );
+  if (mother) return mother;
+
+  // 2. If token has MOTH- prefix (e.g. MOTH-917654321V)
+  if (token.toUpperCase().startsWith('MOTH-')) {
+    const nicPart = token.slice(5).trim();
+    mother = await db.getFirstAsync<Mother>(
+      'SELECT * FROM mothers WHERE (nic = ? OR nic = ? OR qr_token = ?) AND deleted_at IS NULL',
+      [nicPart, nicPart.toUpperCase(), token]
+    );
+    if (mother) return mother;
+  }
+
+  // 3. If token has M-QR- prefix (e.g. M-QR-0002)
+  if (token.toUpperCase().startsWith('M-QR-')) {
+    mother = await db.getFirstAsync<Mother>(
+      'SELECT * FROM mothers WHERE (qr_token = ? OR qr_token LIKE ?) AND deleted_at IS NULL',
+      [token, `%${token}%`]
+    );
+    if (mother) return mother;
+  }
+
+  // 4. Direct match on NIC
+  mother = await db.getFirstAsync<Mother>(
+    'SELECT * FROM mothers WHERE (nic = ? OR nic = ?) AND deleted_at IS NULL',
+    [token, token.toUpperCase()]
+  );
+  if (mother) return mother;
+
+  // 5. Direct match on UUID id
+  mother = await db.getFirstAsync<Mother>(
+    'SELECT * FROM mothers WHERE id = ? AND deleted_at IS NULL',
+    [token]
+  );
+  if (mother) return mother;
+
+  return null;
+}
+
+export async function getMotherByNIC(nic: string): Promise<Mother | null> {
+  if (!nic) return null;
+  const db = await getDatabase();
+  const cleanNic = nic.trim();
   return await db.getFirstAsync<Mother>(
-    'SELECT * FROM mothers WHERE qr_token = ? AND deleted_at IS NULL', [qrToken]
+    'SELECT * FROM mothers WHERE (nic = ? OR nic = ?) AND deleted_at IS NULL',
+    [cleanNic, cleanNic.toUpperCase()]
   );
 }
 

@@ -1,24 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
+  TextInput,
   StyleSheet,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import {
   getMotherByQR,
   getMotherById,
+  getMotherByNIC,
   getChildByQR,
   getAllMothers,
   getAllChildren,
   type MotherWithPregnancy,
   type Child,
 } from '@/src/db';
+import { QrCodeScanSchema } from '@/src/validations';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 
 export default function ScanScreen() {
@@ -27,8 +31,18 @@ export default function ScanScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
+  const [manualCode, setManualCode] = useState('');
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
   const [mothersList, setMothersList] = useState<MotherWithPregnancy[]>([]);
   const [childrenList, setChildrenList] = useState<Child[]>([]);
+
+  // Automatically reset scanned state when the screen regains focus
+  useFocusEffect(
+    useCallback(() => {
+      setScanned(false);
+    }, [])
+  );
 
   useEffect(() => {
     async function loadDemoList() {
@@ -43,33 +57,91 @@ export default function ScanScreen() {
     loadDemoList();
   }, []);
 
-  const handleBarcodeScanned = async ({ data }: { data: string }) => {
+  const handleBarcodeScanned = async (event: any) => {
     if (scanned) return;
     setScanned(true);
 
     try {
-      let cleanToken = data.trim();
+      // 1. Safe extraction across Web, Native, and Simulated events
+      let rawData = '';
+      if (typeof event === 'string') {
+        rawData = event;
+      } else if (event?.data && typeof event.data === 'string') {
+        rawData = event.data;
+      } else if (event?.nativeEvent?.data && typeof event.nativeEvent.data === 'string') {
+        rawData = event.nativeEvent.data;
+      } else if (event?.raw && typeof event.raw === 'string') {
+        rawData = event.raw;
+      }
 
-      // Extract token if embedded inside a URL or query parameter
+      let cleanToken = rawData.trim();
+      if (!cleanToken) {
+        setScanned(false);
+        return;
+      }
+
+      // 2. Extract token from URL query parameters (e.g. ?token=..., ?code=..., ?nic=...)
       if (cleanToken.includes('token=')) {
         const match = cleanToken.match(/[?&]token=([^&]+)/);
         if (match) cleanToken = decodeURIComponent(match[1]);
-      } else if (cleanToken.includes('/m/')) {
-        const parts = cleanToken.split('/m/');
-        if (parts[1]) cleanToken = parts[1].split(/[?#]/)[0];
+      } else if (cleanToken.includes('code=')) {
+        const match = cleanToken.match(/[?&]code=([^&]+)/);
+        if (match) cleanToken = decodeURIComponent(match[1]);
+      } else if (cleanToken.includes('nic=')) {
+        const match = cleanToken.match(/[?&]nic=([^&]+)/);
+        if (match) cleanToken = decodeURIComponent(match[1]);
       }
 
-      // Check if mother QR or direct UUID
+      // 3. Extract token from URL path segments (e.g. /mother/..., /m/..., /child/..., /c/...)
+      if (cleanToken.includes('/mother/')) {
+        const parts = cleanToken.split('/mother/');
+        if (parts[1]) cleanToken = parts[1].split(/[?#/]/)[0];
+      } else if (cleanToken.includes('/m/')) {
+        const parts = cleanToken.split('/m/');
+        if (parts[1]) cleanToken = parts[1].split(/[?#/]/)[0];
+      } else if (cleanToken.includes('/child/')) {
+        const parts = cleanToken.split('/child/');
+        if (parts[1]) cleanToken = parts[1].split(/[?#/]/)[0];
+      } else if (cleanToken.includes('/c/')) {
+        const parts = cleanToken.split('/c/');
+        if (parts[1]) cleanToken = parts[1].split(/[?#/]/)[0];
+      }
+
+      // Validate extracted token using QrCodeScanSchema
+      const scanValidation = QrCodeScanSchema.safeParse({ token: cleanToken });
+      if (!scanValidation.success) {
+        const errMsg = scanValidation.error.issues[0]?.message || 'Invalid QR code token';
+        Alert.alert(
+          t('scan.unrecognized', 'QR කේතය හඳුනාගත නොහැක'),
+          errMsg,
+          [{ text: t('scan.again', 'නැවත ස්කෑන් කරන්න'), onPress: () => setScanned(false) }]
+        );
+        return;
+      }
+
+      // 4. Resolve Mother: QR Token -> ID -> NIC -> MOTH- prefix -> Demo Invite Code
       let mother = await getMotherByQR(cleanToken);
       if (!mother) {
         mother = (await getMotherById(cleanToken)) as any;
       }
+      if (!mother) {
+        mother = (await getMotherByNIC(cleanToken)) as any;
+      }
+      if (!mother && cleanToken.toUpperCase().startsWith('MOTH-')) {
+        const strippedNic = cleanToken.replace(/^MOTH-/i, '').trim();
+        mother = (await getMotherByNIC(strippedNic)) as any;
+      }
+      // Demo invite code support: DRN-74K -> Inoka Dilhani (917654321V)
+      if (!mother && cleanToken.toUpperCase() === 'DRN-74K') {
+        mother = (await getMotherByNIC('917654321V')) as any;
+      }
+
       if (mother) {
         router.push(`/mother/${mother.id}` as any);
         return;
       }
 
-      // Check if child QR
+      // 5. Resolve Child: QR Token -> ID -> CHLD- prefix
       const child = await getChildByQR(cleanToken);
       if (child) {
         router.push(`/child/${child.id}` as any);
@@ -78,13 +150,28 @@ export default function ScanScreen() {
 
       Alert.alert(
         t('scan.unrecognized', 'QR කේතය හඳුනාගත නොහැක'),
-        `No mother or child found with QR Token: ${cleanToken}`,
+        `No mother or child record matches: "${cleanToken}"\n\nකරුණාකර වලංගු සායනික QR කේතයක් හෝ ජා.හැ. අංකයක් භාවිත කරන්න.`,
         [{ text: t('scan.again', 'නැවත ස්කෑන් කරන්න'), onPress: () => setScanned(false) }]
       );
     } catch (e: any) {
       Alert.alert(t('common.error', 'දෝෂයකි'), e?.message || 'Failed to process QR token');
       setScanned(false);
     }
+  };
+
+  const handleManualSearch = async () => {
+    const code = manualCode.trim();
+    const validation = QrCodeScanSchema.safeParse({ token: code });
+    if (!validation.success) {
+      const errMsg = validation.error.issues[0]?.message || 'Token must be at least 3 characters';
+      setManualError(errMsg);
+      Alert.alert(t('common.error', 'දෝෂයකි'), errMsg);
+      return;
+    }
+    setManualError(null);
+    setSearching(true);
+    await handleBarcodeScanned(code);
+    setSearching(false);
   };
 
   const handleSimulateScan = (qrToken: string) => {
@@ -158,7 +245,51 @@ export default function ScanScreen() {
         )}
       </View>
 
-      {/* 2. SIMULATE QR SCAN (DEMO / EMULATOR PICKER) */}
+      {/* 2. MANUAL LOOKUP SECTION (FOR FIELD RESILIENCE / DESKTOP / DAMAGED QR) */}
+      <View style={styles.manualSearchCard}>
+        <View style={styles.manualHeaderRow}>
+          <Text style={styles.manualSearchIcon}>⌨️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.manualSearchTitle}>
+              {t('scan.manualTitle', 'ජා.හැ. අංකය / QR Token / Invite Code මගින් සෙවීම')}
+            </Text>
+            <Text style={styles.manualSearchSub}>
+              {t('scan.manualSub', 'කැමරාව නොමැති විට හෝ QR කේතය කියවිය නොහැකි විට භාවිත කරන්න')}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.manualInputRow}>
+          <TextInput
+            style={[styles.manualInput, manualError ? styles.inputError : null]}
+            placeholder="e.g. 917654321V, MOTH-917654321V, DRN-74K"
+            placeholderTextColor={COLORS.textTertiary}
+            value={manualCode}
+            onChangeText={(txt) => {
+              setManualCode(txt);
+              if (manualError) setManualError(null);
+            }}
+            autoCapitalize="characters"
+            returnKeyType="search"
+            onSubmitEditing={handleManualSearch}
+          />
+          <TouchableOpacity
+            style={[styles.manualSearchBtn, !manualCode.trim() && styles.manualSearchBtnDisabled]}
+            disabled={!manualCode.trim() || searching}
+            onPress={handleManualSearch}
+          >
+            {searching ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.manualSearchBtnText}>{t('common.search', 'සොයන්න')}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+        {manualError ? (
+          <Text style={styles.errorText}>⚠ {manualError}</Text>
+        ) : null}
+      </View>
+
+      {/* 3. SIMULATE QR SCAN (DEMO / EMULATOR PICKER) */}
       <View style={styles.demoSection}>
         <View style={styles.demoHeader}>
           <View style={styles.demoIconCircle}>
@@ -380,6 +511,77 @@ const styles = StyleSheet.create({
   },
   permissionText: {
     color: COLORS.textTertiary,
+    fontSize: 13,
+  },
+  manualSearchCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.borderHairline,
+    ...SHADOWS.card,
+  },
+  manualHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  manualSearchIcon: {
+    fontSize: 20,
+  },
+  manualSearchTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  manualSearchSub: {
+    fontSize: 11,
+    color: COLORS.textTertiary,
+    marginTop: 2,
+  },
+  manualInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  manualInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: COLORS.canvas,
+    borderWidth: 1,
+    borderColor: COLORS.borderHairline,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  inputError: {
+    borderColor: COLORS.risk.red.accent,
+    backgroundColor: COLORS.risk.red.bg,
+  },
+  errorText: {
+    color: COLORS.risk.red.text,
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 6,
+  },
+  manualSearchBtn: {
+    height: 44,
+    paddingHorizontal: 18,
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  manualSearchBtnDisabled: {
+    opacity: 0.5,
+  },
+  manualSearchBtnText: {
+    color: COLORS.textWhite,
+    fontWeight: '700',
     fontSize: 13,
   },
   demoSection: {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { CreatePhmSchema } from '@/lib/validations';
 
 // Server-Only API route for creating and mapping PHM staff
 // Guarded strictly by SUPABASE_SERVICE_ROLE_KEY and MOH session verification
@@ -18,15 +19,27 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json();
-    const { email, password, fullName, phmAreaId, preferredLang = 'si' } = body;
-
-    if (!email || !password || !fullName || !phmAreaId) {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
       return NextResponse.json(
-        { success: false, message: 'Missing required fields: email, password, fullName, phmAreaId' },
+        { success: false, message: 'Invalid JSON request payload.' },
         { status: 400 }
       );
     }
+
+    const parseResult = CreatePhmSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      return NextResponse.json(
+        { success: false, message: issue?.message || 'Invalid PHM creation payload.' },
+        { status: 400 }
+      );
+    }
+
+    const { email, password, fullName, phmAreaId, preferredLang } = parseResult.data;
 
     const adminClient = createClient(supabaseUrl, serviceKey, {
       auth: {

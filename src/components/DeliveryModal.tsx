@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { markDelivered, createChild, createImmunization, createGrowthRecord } from '../db';
 import { generateEPISchedule } from '../engine/epiScheduler';
+import { ChildFormValidationSchema } from '../validations';
 import { COLORS, RADIUS, SHADOWS } from '../theme';
 
 interface DeliveryModalProps {
@@ -60,19 +61,44 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
   const [babyName, setBabyName] = useState('');
   const [gender, setGender] = useState<'M' | 'F'>('F');
   const [birthWeight, setBirthWeight] = useState('3.0');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[field];
+        return copy;
+      });
+    }
+  };
+
   const handleSubmit = () => {
-    if (!babyName.trim()) {
-      Alert.alert('Required', 'Please enter baby name');
+    const { iso: deliveryIso } = parseDmyToIso(deliveryDate);
+    const weightNum = parseFloat(birthWeight);
+
+    // Validate using Zod ChildFormValidationSchema
+    const validation = ChildFormValidationSchema.safeParse({
+      fullName: babyName.trim(),
+      dob: deliveryIso,
+      gender: gender,
+      birthWeightKg: isNaN(weightNum) ? null : weightNum,
+    });
+
+    if (!validation.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of validation.error.issues) {
+        const field = String(issue.path[0] || 'form');
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+      }
+      setErrors(fieldErrors);
+      const firstError = validation.error.issues[0]?.message || 'Please check child details';
+      Alert.alert(isSi ? 'දෝෂයකි' : 'Validation Error', firstError);
       return;
     }
 
-    const weightNum = parseFloat(birthWeight);
-    if (isNaN(weightNum) || weightNum <= 0) {
-      Alert.alert('Invalid Weight', 'Please enter a valid birth weight in kg');
-      return;
-    }
+    setErrors({});
 
     const modeLabel = deliveryMode === 'CS' ? 'Caesarean (CS)' : deliveryMode === 'INSTRUMENTAL' ? 'Instrumental' : 'Normal Vaginal';
     const modeLabelSi = deliveryMode === 'CS' ? 'සිසේරියන් (CS)' : deliveryMode === 'INSTRUMENTAL' ? 'උපකරණ ආධාරක' : 'ස්වභාවික ප්‍රසූතිය';
@@ -165,13 +191,19 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
 
             {/* Delivery Date */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>{t('mother.deliveryDate', 'Delivery Date (DD/MM/YYYY)')}</Text>
+              <Text style={styles.label}>{t('mother.deliveryDate', 'Delivery Date (DD/MM/YYYY)')} *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.dob ? styles.inputError : null]}
                 value={deliveryDate}
-                onChangeText={setDeliveryDate}
+                onChangeText={(v) => {
+                  setDeliveryDate(v);
+                  clearError('dob');
+                }}
                 placeholder="DD/MM/YYYY"
               />
+              {errors.dob ? (
+                <Text style={styles.errorText}>⚠ {errors.dob}</Text>
+              ) : null}
             </View>
 
             {/* Delivery Mode */}
@@ -206,22 +238,31 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
 
             {/* Baby Full Name */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>{t('mother.babyName', "Baby's Full Name")}</Text>
+              <Text style={styles.label}>{t('mother.babyName', "Baby's Full Name")} *</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.fullName ? styles.inputError : null]}
                 value={babyName}
-                onChangeText={setBabyName}
+                onChangeText={(v) => {
+                  setBabyName(v);
+                  clearError('fullName');
+                }}
                 placeholder="e.g. Baby of Nimali Perera"
               />
+              {errors.fullName ? (
+                <Text style={styles.errorText}>⚠ {errors.fullName}</Text>
+              ) : null}
             </View>
 
             {/* Gender */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>{t('mother.babyGender', "Baby's Gender")}</Text>
+              <Text style={styles.label}>{t('mother.babyGender', "Baby's Gender")} *</Text>
               <View style={styles.genderRow}>
                 <TouchableOpacity
                   activeOpacity={0.75}
-                  onPress={() => setGender('M')}
+                  onPress={() => {
+                    setGender('M');
+                    clearError('gender');
+                  }}
                   style={[styles.genderChip, gender === 'M' && styles.genderChipMale]}
                 >
                   <Text style={[styles.genderChipText, gender === 'M' && styles.genderTextActiveMale]}>
@@ -231,7 +272,10 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
 
                 <TouchableOpacity
                   activeOpacity={0.75}
-                  onPress={() => setGender('F')}
+                  onPress={() => {
+                    setGender('F');
+                    clearError('gender');
+                  }}
                   style={[styles.genderChip, gender === 'F' && styles.genderChipFemale]}
                 >
                   <Text style={[styles.genderChipText, gender === 'F' && styles.genderTextActiveFemale]}>
@@ -239,26 +283,33 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
                   </Text>
                 </TouchableOpacity>
               </View>
+              {errors.gender ? (
+                <Text style={styles.errorText}>⚠ {errors.gender}</Text>
+              ) : null}
             </View>
 
             {/* Birth Weight */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>{t('mother.birthWeight', 'Birth Weight (kg)')}</Text>
+              <Text style={styles.label}>{t('mother.birthWeight', 'Birth Weight (kg)')} *</Text>
               <View style={styles.stepperRow}>
                 <TouchableOpacity
                   style={styles.stepBtn}
                   onPress={() => {
                     const w = parseFloat(birthWeight) || 3.0;
-                    setBirthWeight((Math.max(1.0, w - 0.1)).toFixed(2));
+                    setBirthWeight((Math.max(0.5, w - 0.1)).toFixed(2));
+                    clearError('birthWeightKg');
                   }}
                 >
                   <Text style={styles.stepBtnText}>-</Text>
                 </TouchableOpacity>
 
                 <TextInput
-                  style={[styles.input, styles.stepperInput]}
+                  style={[styles.input, styles.stepperInput, errors.birthWeightKg ? styles.inputError : null]}
                   value={birthWeight}
-                  onChangeText={setBirthWeight}
+                  onChangeText={(v) => {
+                    setBirthWeight(v);
+                    clearError('birthWeightKg');
+                  }}
                   keyboardType="decimal-pad"
                 />
 
@@ -267,11 +318,15 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
                   onPress={() => {
                     const w = parseFloat(birthWeight) || 3.0;
                     setBirthWeight((w + 0.1).toFixed(2));
+                    clearError('birthWeightKg');
                   }}
                 >
                   <Text style={styles.stepBtnText}>+</Text>
                 </TouchableOpacity>
               </View>
+              {errors.birthWeightKg ? (
+                <Text style={styles.errorText}>⚠ {errors.birthWeightKg}</Text>
+              ) : null}
             </View>
 
             {/* Action buttons */}
@@ -359,6 +414,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textPrimary,
     backgroundColor: COLORS.surfaceSubtle,
+  },
+  inputError: {
+    borderColor: COLORS.risk.red.accent,
+    backgroundColor: COLORS.risk.red.bg,
+  },
+  errorText: {
+    color: COLORS.risk.red.text,
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 4,
   },
   modeRow: {
     flexDirection: 'row',

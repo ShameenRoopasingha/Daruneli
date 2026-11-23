@@ -6,6 +6,7 @@ import {
 } from '@/lib/supabaseAdmin';
 import { MOCK_STAFF, MOCK_AUDIT_LOGS } from '@/lib/mockData';
 import { StaffMember, UserAuditLogItem } from '@/lib/types';
+import { UpdateStatusSchema, UserIdParamSchema } from '@/lib/validations';
 
 // POST /api/admin/users/[id]/status — Deactivate or Reactivate Staff Account (MOH Only)
 export async function POST(
@@ -13,6 +14,15 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const idValidation = UserIdParamSchema.safeParse(params?.id);
+    if (!idValidation.success) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid or missing user ID in URL parameters.' },
+        { status: 400 }
+      );
+    }
+    const targetId = idValidation.data;
+
     let caller;
     try {
       caller = await requireMohSession();
@@ -21,7 +31,6 @@ export async function POST(
       throw responseErr;
     }
 
-    const targetId = params.id;
     if (targetId === caller.userId) {
       return NextResponse.json(
         { success: false, message: 'You cannot deactivate your own administrative account.' },
@@ -29,15 +38,27 @@ export async function POST(
       );
     }
 
-    const body = await req.json();
-    const { isActive, reason } = body;
-
-    if (typeof isActive !== 'boolean') {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
       return NextResponse.json(
-        { success: false, message: 'Field "isActive" (boolean) is required.' },
+        { success: false, message: 'Invalid JSON request payload.' },
         { status: 400 }
       );
     }
+
+    const parseResult = UpdateStatusSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      return NextResponse.json(
+        { success: false, message: issue?.message || 'Field "isActive" (boolean) is required.' },
+        { status: 400 }
+      );
+    }
+
+    const { isActive, reason } = parseResult.data;
 
     const nowIso = new Date().toISOString();
     const action = isActive ? 'REACTIVATE_USER' : 'DEACTIVATE_USER';

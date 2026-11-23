@@ -18,6 +18,7 @@ import { createFamily, createMother, createPregnancy } from '@/src/db';
 import { TapChipSelector, type ChipOption } from '@/src/components/TapChipSelector';
 import { calculateRisk, type DangerSign } from '@/src/engine/riskEngine';
 import { calculateEDD } from '@/src/engine/pregnancyCalc';
+import { MotherFormValidationSchema } from '@/src/validations';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 
 const CHRONIC_OPTIONS: ChipOption[] = [
@@ -116,20 +117,70 @@ export default function RegisterMotherScreen() {
   const [gravida, setGravida] = useState(1);
   const [para, setPara] = useState(0);
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
   const handleRegister = async () => {
-    if (!fullName.trim()) {
-      Alert.alert('Required Field', 'Please enter mother full name');
+    const { iso: dobIso, date: birthDate } = parseDmyToIso(dob);
+    const { iso: lrmpIso, date: lrmpDateObj } = parseDmyToIso(lrmpDate);
+
+    // Validate using Zod MotherFormValidationSchema
+    const validationResult = MotherFormValidationSchema.safeParse({
+      fullName: fullName.trim(),
+      nic: nic.trim(),
+      dob: dobIso,
+      phone: phone.trim(),
+      bloodGroup: bloodGroup,
+      eligibleFamilyNo: familyNo.trim(),
+      gnDivision: gnDivision.trim(),
+      address: address.trim(),
+      husbandName: husbandName.trim(),
+      emergencyPhone: emergencyPhone.trim(),
+    });
+
+    if (!validationResult.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of validationResult.error.issues) {
+        const fieldName = String(issue.path[0] || 'form');
+        if (!fieldErrors[fieldName]) {
+          fieldErrors[fieldName] = issue.message;
+        }
+      }
+
+      if (isPregnant && (isNaN(lrmpDateObj.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(lrmpIso))) {
+        fieldErrors['lrmpDate'] = 'Valid LRMP Date (DD/MM/YYYY) is required';
+      }
+
+      setErrors(fieldErrors);
+      const firstError = validationResult.error.issues[0]?.message || 'Please check highlighted errors';
+      Alert.alert(t('common.error', 'Validation Error'), firstError);
       return;
     }
+
+    if (isPregnant && (isNaN(lrmpDateObj.getTime()) || !/^\d{4}-\d{2}-\d{2}$/.test(lrmpIso))) {
+      setErrors((prev) => ({ ...prev, lrmpDate: 'Valid LRMP Date (DD/MM/YYYY) is required' }));
+      Alert.alert(t('common.error', 'Validation Error'), 'Valid LRMP Date (DD/MM/YYYY) is required');
+      return;
+    }
+
+    setErrors({});
 
     try {
       setIsSubmitting(true);
 
       // 1. Create Family record
       const familyId = await createFamily({
-        eligible_family_no: familyNo.trim() || `EF/${Date.now().toString().slice(-4)}`,
+        eligible_family_no: familyNo.trim(),
         gn_division: gnDivision,
         address: address.trim(),
         husband_name: husbandName.trim(),
@@ -138,9 +189,6 @@ export default function RegisterMotherScreen() {
         gps_lat: gpsLat,
         gps_lng: gpsLng,
       });
-
-      const { iso: dobIso, date: birthDate } = parseDmyToIso(dob);
-      const { iso: lrmpIso, date: lrmpDateObj } = parseDmyToIso(lrmpDate);
 
       // 2. Create Mother record
       const motherId = await createMother({
@@ -229,41 +277,59 @@ export default function RegisterMotherScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('mother.familyNo', 'Eligible Family No')}</Text>
+          <Text style={styles.label}>{t('mother.familyNo', 'Eligible Family No')} *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.eligibleFamilyNo ? styles.inputError : null]}
             placeholder="e.g. EF/KOT/012"
             placeholderTextColor={COLORS.textTertiary}
             value={familyNo}
-            onChangeText={setFamilyNo}
+            onChangeText={(v) => {
+              setFamilyNo(v);
+              clearError('eligibleFamilyNo');
+            }}
           />
+          {errors.eligibleFamilyNo ? (
+            <Text style={styles.errorText}>⚠ {errors.eligibleFamilyNo}</Text>
+          ) : null}
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('mother.gnDivision', 'GN Division')}</Text>
+          <Text style={styles.label}>{t('mother.gnDivision', 'GN Division')} *</Text>
           <View style={styles.gnRow}>
             {GN_DIVISIONS.map((gn) => (
               <TouchableOpacity
                 key={gn}
                 activeOpacity={0.7}
                 style={[styles.gnChip, gnDivision === gn && styles.gnChipActive]}
-                onPress={() => setGnDivision(gn)}
+                onPress={() => {
+                  setGnDivision(gn);
+                  clearError('gnDivision');
+                }}
               >
                 <Text style={[styles.gnText, gnDivision === gn && styles.gnTextActive]}>{gn}</Text>
               </TouchableOpacity>
             ))}
           </View>
+          {errors.gnDivision ? (
+            <Text style={styles.errorText}>⚠ {errors.gnDivision}</Text>
+          ) : null}
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('mother.address', 'Residential Address')}</Text>
+          <Text style={styles.label}>{t('mother.address', 'Residential Address')} *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.address ? styles.inputError : null]}
             placeholder="Address details"
             placeholderTextColor={COLORS.textTertiary}
             value={address}
-            onChangeText={setAddress}
+            onChangeText={(v) => {
+              setAddress(v);
+              clearError('address');
+            }}
           />
+          {errors.address ? (
+            <Text style={styles.errorText}>⚠ {errors.address}</Text>
+          ) : null}
         </View>
 
         {/* GPS Location Pinning */}
@@ -291,26 +357,38 @@ export default function RegisterMotherScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('mother.husbandName', "Husband's Name")}</Text>
+          <Text style={styles.label}>{t('mother.husbandName', "Husband's Name")} *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.husbandName ? styles.inputError : null]}
             placeholder="Husband full name"
             placeholderTextColor={COLORS.textTertiary}
             value={husbandName}
-            onChangeText={setHusbandName}
+            onChangeText={(v) => {
+              setHusbandName(v);
+              clearError('husbandName');
+            }}
           />
+          {errors.husbandName ? (
+            <Text style={styles.errorText}>⚠ {errors.husbandName}</Text>
+          ) : null}
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('mother.emergencyPhone', 'Emergency Phone')}</Text>
+          <Text style={styles.label}>{t('mother.emergencyPhone', 'Emergency Phone')} *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.emergencyPhone ? styles.inputError : null]}
             placeholder="07XXXXXXXX"
             placeholderTextColor={COLORS.textTertiary}
             keyboardType="phone-pad"
             value={emergencyPhone}
-            onChangeText={setEmergencyPhone}
+            onChangeText={(v) => {
+              setEmergencyPhone(v);
+              clearError('emergencyPhone');
+            }}
           />
+          {errors.emergencyPhone ? (
+            <Text style={styles.errorText}>⚠ {errors.emergencyPhone}</Text>
+          ) : null}
         </View>
       </View>
 
@@ -324,46 +402,71 @@ export default function RegisterMotherScreen() {
         <View style={styles.formGroup}>
           <Text style={styles.label}>{t('mother.fullName', 'Full Name')} *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.fullName ? styles.inputError : null]}
             placeholder="Mother full name"
             placeholderTextColor={COLORS.textTertiary}
             value={fullName}
-            onChangeText={setFullName}
+            onChangeText={(v) => {
+              setFullName(v);
+              clearError('fullName');
+            }}
           />
+          {errors.fullName ? (
+            <Text style={styles.errorText}>⚠ {errors.fullName}</Text>
+          ) : null}
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>{t('mother.nic', 'NIC Number')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.nic ? styles.inputError : null]}
             placeholder="e.g. 199512345678 or 951234567V"
             placeholderTextColor={COLORS.textTertiary}
             value={nic}
-            onChangeText={setNic}
+            autoCapitalize="characters"
+            onChangeText={(v) => {
+              setNic(v);
+              clearError('nic');
+            }}
           />
+          {errors.nic ? (
+            <Text style={styles.errorText}>⚠ {errors.nic}</Text>
+          ) : null}
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('mother.dob', 'Date of Birth (DD/MM/YYYY)')}</Text>
+          <Text style={styles.label}>{t('mother.dob', 'Date of Birth (DD/MM/YYYY)')} *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.dob ? styles.inputError : null]}
             placeholder="DD/MM/YYYY"
             placeholderTextColor={COLORS.textTertiary}
             value={dob}
-            onChangeText={setDob}
+            onChangeText={(v) => {
+              setDob(v);
+              clearError('dob');
+            }}
           />
+          {errors.dob ? (
+            <Text style={styles.errorText}>⚠ {errors.dob}</Text>
+          ) : null}
         </View>
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>{t('mother.phone', 'Phone Number')}</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.phone ? styles.inputError : null]}
             placeholder="07XXXXXXXX"
             placeholderTextColor={COLORS.textTertiary}
             keyboardType="phone-pad"
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(v) => {
+              setPhone(v);
+              clearError('phone');
+            }}
           />
+          {errors.phone ? (
+            <Text style={styles.errorText}>⚠ {errors.phone}</Text>
+          ) : null}
         </View>
 
         <View style={styles.formGroup}>
@@ -374,12 +477,18 @@ export default function RegisterMotherScreen() {
                 key={bg}
                 activeOpacity={0.7}
                 style={[styles.bgChip, bloodGroup === bg && styles.bgChipActive]}
-                onPress={() => setBloodGroup(bg)}
+                onPress={() => {
+                  setBloodGroup(bg);
+                  clearError('bloodGroup');
+                }}
               >
                 <Text style={[styles.bgText, bloodGroup === bg && styles.bgTextActive]}>{bg}</Text>
               </TouchableOpacity>
             ))}
           </View>
+          {errors.bloodGroup ? (
+            <Text style={styles.errorText}>⚠ {errors.bloodGroup}</Text>
+          ) : null}
         </View>
       </View>
 
@@ -562,12 +671,18 @@ export default function RegisterMotherScreen() {
                 {t('mother.lrmpDate', 'LRMP Date (Last Menstrual Period)')} (DD/MM/YYYY) *
               </Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.lrmpDate ? styles.inputError : null]}
                 placeholder="DD/MM/YYYY"
                 placeholderTextColor={COLORS.textTertiary}
                 value={lrmpDate}
-                onChangeText={setLrmpDate}
+                onChangeText={(v) => {
+                  setLrmpDate(v);
+                  clearError('lrmpDate');
+                }}
               />
+              {errors.lrmpDate ? (
+                <Text style={styles.errorText}>⚠ {errors.lrmpDate}</Text>
+              ) : null}
             </View>
 
             <View style={styles.gravidaRow}>
@@ -699,6 +814,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textPrimary,
     backgroundColor: COLORS.surfaceSubtle,
+  },
+  inputError: {
+    borderColor: COLORS.risk.red.accent,
+    backgroundColor: COLORS.risk.red.bg,
+  },
+  errorText: {
+    color: COLORS.risk.red.text,
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 4,
   },
   gpsPinBtn: {
     flexDirection: 'row',

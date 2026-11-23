@@ -6,6 +6,7 @@ import {
 } from '@/lib/supabaseAdmin';
 import { MOCK_STAFF, MOCK_AUDIT_LOGS } from '@/lib/mockData';
 import { UserAuditLogItem } from '@/lib/types';
+import { ResetPasswordRouteSchema, UserIdParamSchema } from '@/lib/validations';
 
 // POST /api/admin/users/[id]/reset-password — Reset password or send recovery link (MOH Only)
 export async function POST(
@@ -13,6 +14,15 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const idValidation = UserIdParamSchema.safeParse(params?.id);
+    if (!idValidation.success) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid or missing user ID in URL parameters.' },
+        { status: 400 }
+      );
+    }
+    const targetId = idValidation.data;
+
     let caller;
     try {
       caller = await requireMohSession();
@@ -21,16 +31,27 @@ export async function POST(
       throw responseErr;
     }
 
-    const targetId = params.id;
-    const body = await req.json();
-    const { tempPassword, sendEmail } = body;
-
-    if (!tempPassword && !sendEmail) {
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
       return NextResponse.json(
-        { success: false, message: 'Please provide either a temporary password or request an email reset link.' },
+        { success: false, message: 'Invalid JSON request payload.' },
         { status: 400 }
       );
     }
+
+    const parseResult = ResetPasswordRouteSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      return NextResponse.json(
+        { success: false, message: issue?.message || 'Invalid reset password parameters.' },
+        { status: 400 }
+      );
+    }
+
+    const { tempPassword, sendEmail } = parseResult.data;
 
     const nowIso = new Date().toISOString();
 

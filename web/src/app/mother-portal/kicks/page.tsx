@@ -134,6 +134,20 @@ export default function MotherKicksPage() {
       };
 
       setHistory((prev) => [newEntry, ...prev.filter((item) => item.logDate !== todayDmy)]);
+
+      // Sync completed kick record to backend API
+      fetch('/api/mother-portal/kicks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          logDate: todayDmy,
+          startTime: startStr,
+          tenthKickTime: timeStr,
+          kickCount: 10,
+          durationMinutes: totalDuration,
+          reducedMovementFlag: false,
+        }),
+      }).catch((e) => console.error('Failed to sync kick log to backend:', e));
     }
 
     saveSession(next, effectiveStart);
@@ -177,6 +191,20 @@ export default function MotherKicksPage() {
     };
 
     setHistory((prev) => [alertEntry, ...prev.filter((item) => item.logDate !== todayDmy)]);
+
+    // Sync reduced kicks alert record to backend API
+    fetch('/api/mother-portal/kicks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        logDate: todayDmy,
+        startTime: '09:00',
+        tenthKickTime: timeStr,
+        kickCount: kickCount,
+        durationMinutes: elapsedMinutes || 720,
+        reducedMovementFlag: true,
+      }),
+    }).catch((e) => console.error('Failed to sync kick alert to backend:', e));
   };
 
   return (

@@ -6,6 +6,7 @@ import {
 } from '@/lib/supabaseAdmin';
 import { MOCK_STAFF, MOCK_AUDIT_LOGS } from '@/lib/mockData';
 import { StaffMember, UserAuditLogItem } from '@/lib/types';
+import { UpdateStaffSchema, UserIdParamSchema } from '@/lib/validations';
 
 // PATCH /api/admin/users/[id] — Update staff member profile / reassign area
 export async function PATCH(
@@ -13,6 +14,15 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const idValidation = UserIdParamSchema.safeParse(params?.id);
+    if (!idValidation.success) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid or missing user ID in URL parameters.' },
+        { status: 400 }
+      );
+    }
+    const targetId = idValidation.data;
+
     let caller;
     try {
       caller = await requireMohSession();
@@ -21,9 +31,27 @@ export async function PATCH(
       throw responseErr;
     }
 
-    const targetId = params.id;
-    const body = await req.json();
-    const { fullName, email, phone, employeeId, role, phmAreaId, preferredLang } = body;
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: 'Invalid JSON request payload.' },
+        { status: 400 }
+      );
+    }
+
+    const parseResult = UpdateStaffSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      return NextResponse.json(
+        { success: false, message: issue?.message || 'Invalid update parameters.' },
+        { status: 400 }
+      );
+    }
+
+    const { fullName, email, phone, employeeId, role, phmAreaId, preferredLang } = parseResult.data;
 
     if (!isAdminConfigured()) {
       // In-Memory Demo Mode Update

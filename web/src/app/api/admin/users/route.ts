@@ -7,6 +7,7 @@ import {
 } from '@/lib/supabaseAdmin';
 import { MOCK_STAFF, MOCK_AUDIT_LOGS } from '@/lib/mockData';
 import { StaffMember, UserAuditLogItem } from '@/lib/types';
+import { CreateStaffSchema } from '@/lib/validations';
 
 // GET /api/admin/users — List all staff in caller's MOH division
 export async function GET(req: NextRequest) {
@@ -105,7 +106,25 @@ export async function POST(req: NextRequest) {
       throw responseErr;
     }
 
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: 'Invalid JSON request payload.' },
+        { status: 400 }
+      );
+    }
+    const parseResult = CreateStaffSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      return NextResponse.json(
+        { success: false, message: issue?.message || 'Invalid input parameters.' },
+        { status: 400 }
+      );
+    }
+
     const {
       fullName,
       email,
@@ -113,25 +132,10 @@ export async function POST(req: NextRequest) {
       employeeId,
       role,
       phmAreaId,
-      preferredLang = 'si',
+      preferredLang,
       tempPassword,
-      sendInvite = false,
-    } = body;
-
-    // Validation
-    if (!fullName || !email || !role) {
-      return NextResponse.json(
-        { success: false, message: 'Full name, email, and role are required.' },
-        { status: 400 }
-      );
-    }
-
-    if (role === 'PHM' && !phmAreaId) {
-      return NextResponse.json(
-        { success: false, message: 'Assigned PHM Area is required for Field Midwife (PHM) staff.' },
-        { status: 400 }
-      );
-    }
+      sendInvite,
+    } = parseResult.data;
 
     if (!isAdminConfigured()) {
       // In-Memory Demo Mode Creation

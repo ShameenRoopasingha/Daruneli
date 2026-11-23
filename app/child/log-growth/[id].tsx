@@ -28,6 +28,7 @@ import {
   getNutritionStatus,
   type GrowthRecord,
 } from '@/src/engine/growthAnalyzer';
+import { GrowthLogValidationSchema } from '@/src/validations';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 
 const MILESTONE_OPTIONS: ChipOption[] = [
@@ -61,7 +62,18 @@ export default function LogGrowthScreen() {
   const [height, setHeight] = useState('80.0');
   const [milestones, setMilestones] = useState<string[]>([]);
   const [supplements, setSupplements] = useState<string[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[field];
+        return copy;
+      });
+    }
+  };
 
   useEffect(() => {
     async function loadChild() {
@@ -87,10 +99,26 @@ export default function LogGrowthScreen() {
     const weightNum = parseFloat(weight);
     const heightNum = parseFloat(height);
 
-    if (isNaN(weightNum) || weightNum <= 0) {
-      Alert.alert('Required', 'Please enter a valid weight in kg');
+    // Validate using Zod GrowthLogValidationSchema
+    const validation = GrowthLogValidationSchema.safeParse({
+      recordedDate: recordedDate.trim(),
+      weightKg: isNaN(weightNum) ? undefined : weightNum,
+      heightCm: isNaN(heightNum) ? null : heightNum,
+    });
+
+    if (!validation.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of validation.error.issues) {
+        const field = String(issue.path[0] || 'form');
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+      }
+      setErrors(fieldErrors);
+      const firstError = validation.error.issues[0]?.message || 'Please check growth measurements';
+      Alert.alert(t('common.error', 'Validation Error'), firstError);
       return;
     }
+
+    setErrors({});
 
     try {
       setIsSubmitting(true);
@@ -205,12 +233,18 @@ export default function LogGrowthScreen() {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Recorded Date (YYYY-MM-DD)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.recordedDate ? styles.inputError : null]}
             value={recordedDate}
-            onChangeText={setRecordedDate}
+            onChangeText={(v) => {
+              setRecordedDate(v);
+              clearError('recordedDate');
+            }}
             placeholder="YYYY-MM-DD"
             placeholderTextColor={COLORS.textTertiary}
           />
+          {errors.recordedDate ? (
+            <Text style={styles.errorText}>⚠ {errors.recordedDate}</Text>
+          ) : null}
         </View>
 
         {/* Weight with Stepper */}
@@ -222,16 +256,20 @@ export default function LogGrowthScreen() {
               style={styles.stepBtn}
               onPress={() => {
                 const w = parseFloat(weight) || 10.0;
-                setWeight(Math.max(1.0, w - 0.1).toFixed(2));
+                setWeight(Math.max(0.5, w - 0.1).toFixed(2));
+                clearError('weightKg');
               }}
             >
               <Text style={styles.stepBtnText}>-0.1</Text>
             </TouchableOpacity>
 
             <TextInput
-              style={[styles.input, styles.stepperInput]}
+              style={[styles.input, styles.stepperInput, errors.weightKg ? styles.inputError : null]}
               value={weight}
-              onChangeText={setWeight}
+              onChangeText={(v) => {
+                setWeight(v);
+                clearError('weightKg');
+              }}
               keyboardType="decimal-pad"
             />
 
@@ -241,11 +279,15 @@ export default function LogGrowthScreen() {
               onPress={() => {
                 const w = parseFloat(weight) || 10.0;
                 setWeight((w + 0.1).toFixed(2));
+                clearError('weightKg');
               }}
             >
               <Text style={styles.stepBtnText}>+0.1</Text>
             </TouchableOpacity>
           </View>
+          {errors.weightKg ? (
+            <Text style={styles.errorText}>⚠ {errors.weightKg}</Text>
+          ) : null}
         </View>
 
         {/* Height with Stepper */}
@@ -257,16 +299,20 @@ export default function LogGrowthScreen() {
               style={styles.stepBtn}
               onPress={() => {
                 const h = parseFloat(height) || 75.0;
-                setHeight(Math.max(30.0, h - 0.5).toFixed(1));
+                setHeight(Math.max(20.0, h - 0.5).toFixed(1));
+                clearError('heightCm');
               }}
             >
               <Text style={styles.stepBtnText}>-0.5</Text>
             </TouchableOpacity>
 
             <TextInput
-              style={[styles.input, styles.stepperInput]}
+              style={[styles.input, styles.stepperInput, errors.heightCm ? styles.inputError : null]}
               value={height}
-              onChangeText={setHeight}
+              onChangeText={(v) => {
+                setHeight(v);
+                clearError('heightCm');
+              }}
               keyboardType="decimal-pad"
             />
 
@@ -276,11 +322,15 @@ export default function LogGrowthScreen() {
               onPress={() => {
                 const h = parseFloat(height) || 75.0;
                 setHeight((h + 0.5).toFixed(1));
+                clearError('heightCm');
               }}
             >
               <Text style={styles.stepBtnText}>+0.5</Text>
             </TouchableOpacity>
           </View>
+          {errors.heightCm ? (
+            <Text style={styles.errorText}>⚠ {errors.heightCm}</Text>
+          ) : null}
         </View>
       </View>
 
@@ -399,6 +449,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textPrimary,
     backgroundColor: COLORS.surfaceSubtle,
+  },
+  inputError: {
+    borderColor: COLORS.risk.red.accent,
+    backgroundColor: COLORS.risk.red.bg,
+  },
+  errorText: {
+    color: COLORS.risk.red.text,
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 4,
   },
   stepperRow: {
     flexDirection: 'row',

@@ -26,6 +26,7 @@ import { UrgentReferralModal } from '@/src/components/UrgentReferralModal';
 import { VoiceNoteRecorder } from '@/src/components/VoiceNoteRecorder';
 import { calculateRisk, type DangerSign } from '@/src/engine/riskEngine';
 import { calculatePOA } from '@/src/engine/pregnancyCalc';
+import { AntenatalVisitValidationSchema } from '@/src/validations';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 
 const DANGER_SIGN_OPTIONS: ChipOption[] = [
@@ -69,9 +70,20 @@ export default function AntenatalVisitScreen() {
   // Referral Modal State
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [referralReasons, setReferralReasons] = useState<string[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isSavedRef = useRef(false);
   const navigation = useNavigation();
+
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[field];
+        return copy;
+      });
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = (navigation as any).addListener('beforeRemove', (e: any) => {
@@ -117,10 +129,28 @@ export default function AntenatalVisitScreen() {
     const diaNum = parseInt(bpDiastolic, 10);
     const hbNum = parseFloat(hemoglobin);
 
-    if (isNaN(sysNum) || isNaN(diaNum)) {
-      Alert.alert('Required', 'Please enter valid systolic and diastolic blood pressure');
+    // Validate using Zod AntenatalVisitValidationSchema
+    const validation = AntenatalVisitValidationSchema.safeParse({
+      visitDate: visitDate.trim(),
+      bpSystolic: isNaN(sysNum) ? undefined : sysNum,
+      bpDiastolic: isNaN(diaNum) ? undefined : diaNum,
+      weightKg: isNaN(weightNum) ? undefined : weightNum,
+      hemoglobin: isNaN(hbNum) ? undefined : hbNum,
+    });
+
+    if (!validation.success) {
+      const fieldErrors: Record<string, string> = {};
+      for (const issue of validation.error.issues) {
+        const field = String(issue.path[0] || 'form');
+        if (!fieldErrors[field]) fieldErrors[field] = issue.message;
+      }
+      setErrors(fieldErrors);
+      const firstError = validation.error.issues[0]?.message || 'Please check vital measurements';
+      Alert.alert(t('common.error', 'Validation Error'), firstError);
       return;
     }
+
+    setErrors({});
 
     // Parse chronic conditions
     let chronicList: string[] = [];
@@ -261,12 +291,18 @@ export default function AntenatalVisitScreen() {
         <View style={styles.formGroup}>
           <Text style={styles.label}>Visit Date (YYYY-MM-DD)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, errors.visitDate ? styles.inputError : null]}
             value={visitDate}
-            onChangeText={setVisitDate}
+            onChangeText={(v) => {
+              setVisitDate(v);
+              clearError('visitDate');
+            }}
             placeholder="YYYY-MM-DD"
             placeholderTextColor={COLORS.textTertiary}
           />
+          {errors.visitDate ? (
+            <Text style={styles.errorText}>⚠ {errors.visitDate}</Text>
+          ) : null}
         </View>
       </View>
 
@@ -280,7 +316,7 @@ export default function AntenatalVisitScreen() {
         {/* BP Systolic / Diastolic with 140/90 Warning Banner */}
         <View style={styles.formGroup}>
           <Text style={styles.label}>
-            Blood Pressure (mmHg) • Cutoff: 140/90
+            Blood Pressure (mmHg) • Cutoff: 140/90 *
           </Text>
           <View style={styles.bpRow}>
             <View style={{ flex: 1 }}>
@@ -288,14 +324,20 @@ export default function AntenatalVisitScreen() {
               <TextInput
                 style={[
                   styles.input,
-                  parseInt(bpSystolic, 10) >= 140 && styles.inputWarning,
+                  errors.bpSystolic ? styles.inputError : parseInt(bpSystolic, 10) >= 140 ? styles.inputWarning : null,
                 ]}
                 value={bpSystolic}
-                onChangeText={setBpSystolic}
+                onChangeText={(v) => {
+                  setBpSystolic(v);
+                  clearError('bpSystolic');
+                }}
                 keyboardType="numeric"
                 placeholder="120"
                 placeholderTextColor={COLORS.textTertiary}
               />
+              {errors.bpSystolic ? (
+                <Text style={styles.errorText}>⚠ {errors.bpSystolic}</Text>
+              ) : null}
             </View>
             <Text style={styles.bpSlash}>/</Text>
             <View style={{ flex: 1 }}>
@@ -303,14 +345,20 @@ export default function AntenatalVisitScreen() {
               <TextInput
                 style={[
                   styles.input,
-                  parseInt(bpDiastolic, 10) >= 90 && styles.inputWarning,
+                  errors.bpDiastolic ? styles.inputError : parseInt(bpDiastolic, 10) >= 90 ? styles.inputWarning : null,
                 ]}
                 value={bpDiastolic}
-                onChangeText={setBpDiastolic}
+                onChangeText={(v) => {
+                  setBpDiastolic(v);
+                  clearError('bpDiastolic');
+                }}
                 keyboardType="numeric"
                 placeholder="80"
                 placeholderTextColor={COLORS.textTertiary}
               />
+              {errors.bpDiastolic ? (
+                <Text style={styles.errorText}>⚠ {errors.bpDiastolic}</Text>
+              ) : null}
             </View>
           </View>
           {(parseInt(bpSystolic, 10) >= 140 || parseInt(bpDiastolic, 10) >= 90) && (
@@ -332,15 +380,19 @@ export default function AntenatalVisitScreen() {
               onPress={() => {
                 const w = parseFloat(weight) || 60;
                 setWeight(Math.max(30, w - 0.5).toFixed(1));
+                clearError('weightKg');
               }}
             >
               <Text style={styles.stepBtnText}>-0.5</Text>
             </TouchableOpacity>
 
             <TextInput
-              style={[styles.input, styles.stepperInput]}
+              style={[styles.input, styles.stepperInput, errors.weightKg ? styles.inputError : null]}
               value={weight}
-              onChangeText={setWeight}
+              onChangeText={(v) => {
+                setWeight(v);
+                clearError('weightKg');
+              }}
               keyboardType="decimal-pad"
             />
 
@@ -350,11 +402,15 @@ export default function AntenatalVisitScreen() {
               onPress={() => {
                 const w = parseFloat(weight) || 60;
                 setWeight((w + 0.5).toFixed(1));
+                clearError('weightKg');
               }}
             >
               <Text style={styles.stepBtnText}>+0.5</Text>
             </TouchableOpacity>
           </View>
+          {errors.weightKg ? (
+            <Text style={styles.errorText}>⚠ {errors.weightKg}</Text>
+          ) : null}
         </View>
 
         {/* Hemoglobin */}
@@ -365,14 +421,20 @@ export default function AntenatalVisitScreen() {
           <TextInput
             style={[
               styles.input,
-              parseFloat(hemoglobin) < 8.0 && styles.inputWarning,
+              errors.hemoglobin ? styles.inputError : parseFloat(hemoglobin) < 8.0 ? styles.inputWarning : null,
             ]}
             value={hemoglobin}
-            onChangeText={setHemoglobin}
+            onChangeText={(v) => {
+              setHemoglobin(v);
+              clearError('hemoglobin');
+            }}
             keyboardType="decimal-pad"
             placeholder="11.5"
             placeholderTextColor={COLORS.textTertiary}
           />
+          {errors.hemoglobin ? (
+            <Text style={styles.errorText}>⚠ {errors.hemoglobin}</Text>
+          ) : null}
           {parseFloat(hemoglobin) < 8.0 && (
             <View style={styles.alertBox}>
               <Text style={styles.alertText}>
@@ -561,6 +623,16 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.risk.red.bg,
     color: COLORS.risk.red.accent,
     fontWeight: '700',
+  },
+  inputError: {
+    borderColor: COLORS.risk.red.accent,
+    backgroundColor: COLORS.risk.red.bg,
+  },
+  errorText: {
+    color: COLORS.risk.red.text,
+    fontSize: 11.5,
+    fontWeight: '700',
+    marginTop: 4,
   },
   typeRow: {
     flexDirection: 'row',

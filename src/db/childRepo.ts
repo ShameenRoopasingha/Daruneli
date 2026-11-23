@@ -77,10 +77,33 @@ export async function getChildById(id: string): Promise<Child | null> {
 }
 
 export async function getChildByQR(qrToken: string): Promise<Child | null> {
+  if (!qrToken) return null;
   const db = await getDatabase();
-  return await db.getFirstAsync<Child>(
-    'SELECT * FROM children WHERE qr_token = ? AND deleted_at IS NULL', [qrToken]
+  const token = qrToken.trim();
+
+  // 1. Direct match on qr_token
+  let child = await db.getFirstAsync<Child>(
+    'SELECT * FROM children WHERE qr_token = ? AND deleted_at IS NULL', [token]
   );
+  if (child) return child;
+
+  // 2. Direct match on UUID id
+  child = await db.getFirstAsync<Child>(
+    'SELECT * FROM children WHERE id = ? AND deleted_at IS NULL', [token]
+  );
+  if (child) return child;
+
+  // 3. If token starts with C- or CHLD-
+  if (token.toUpperCase().startsWith('C-') || token.toUpperCase().startsWith('CHLD-')) {
+    const stripped = token.replace(/^(CHLD-|C-)/i, '').trim();
+    child = await db.getFirstAsync<Child>(
+      'SELECT * FROM children WHERE (qr_token LIKE ? OR id LIKE ?) AND deleted_at IS NULL',
+      [`%${stripped}%`, `%${stripped}%`]
+    );
+    if (child) return child;
+  }
+
+  return null;
 }
 
 export async function createChild(data: {

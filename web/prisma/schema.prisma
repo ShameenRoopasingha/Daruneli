@@ -1,0 +1,399 @@
+// Prisma Schema for Daruneli Maternal & Child Health System
+// Mirrors PostgreSQL schema deployed on Supabase
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SYSTEM_ADMIN
+  MOH_DOCTOR
+  SUPERVISING_PHM
+  FIELD_PHM
+  CLINIC_STAFF
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum ResidencyStatus {
+  ACTIVE
+  TEMP_OUT
+  TRANSFERRED_OUT
+}
+
+enum RiskLevel {
+  GREEN
+  YELLOW
+  RED
+}
+
+enum PregnancyStatus {
+  ACTIVE
+  DELIVERED
+  MISCARRIAGE
+}
+
+enum Gender {
+  M
+  F
+}
+
+enum NutritionStatus {
+  NORMAL
+  MAM
+  SAM
+}
+
+enum ImmunizationStatus {
+  PENDING
+  GIVEN
+  OVERDUE
+}
+
+enum TaskStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+// -------------------------------------------------------------
+// 1. User Profiles & Authentication
+// -------------------------------------------------------------
+model Profile {
+  id            String        @id @default(uuid()) @db.Uuid
+  role          Role          @default(FIELD_PHM)
+  fullName      String        @map("full_name")
+  phmAreaId     String?       @map("phm_area_id") @db.Uuid
+  mohDivision   String?       @map("moh_division")
+  phone         String?       @unique
+  accountStatus AccountStatus @default(ACTIVE) @map("account_status")
+  passwordHash  String?       @map("password_hash")
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  phmArea   PhmArea?       @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+  auditLogs UserAuditLog[] @relation("AuditPerformer")
+
+  @@map("profiles")
+}
+
+// -------------------------------------------------------------
+// 2. Geographic & Administrative Divisions
+// -------------------------------------------------------------
+model PhmArea {
+  id          String   @id @default(uuid()) @db.Uuid
+  mohDivision String   @map("moh_division")
+  phmAreaName String   @map("phm_area_name")
+  areaCode    String?  @unique @map("area_code")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  profiles            Profile[]
+  families            Family[]
+  mothers             Mother[]
+  pregnancies         Pregnancy[]
+  antenatalVisits     AntenatalVisit[]
+  children            Child[]
+  childGrowthRecords  ChildGrowthRecord[]
+  childImmunizations  ChildImmunization[]
+  tasks               PhmTask[]
+  motherPortalInvites MotherPortalInvite[]
+
+  @@map("phm_areas")
+}
+
+// -------------------------------------------------------------
+// 3. Families
+// -------------------------------------------------------------
+model Family {
+  id                   String          @id @default(uuid()) @db.Uuid
+  phmAreaId            String?         @map("phm_area_id") @db.Uuid
+  eligibleFamilyNo     String          @map("eligible_family_no")
+  gnDivision           String          @map("gn_division")
+  address              String
+  husbandName          String          @map("husband_name")
+  emergencyPhone       String          @map("emergency_phone")
+  residencyStatus      ResidencyStatus @default(ACTIVE) @map("residency_status")
+  gpsLat               Float?          @map("gps_lat")
+  gpsLng               Float?          @map("gps_lng")
+  tempOutReturnDate    DateTime?       @map("temp_out_return_date") @db.Date
+  transferNote         String?         @map("transfer_note")
+  transferredToPhmArea String?         @map("transferred_to_phm_area")
+  createdAt            DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt            DateTime?       @map("deleted_at") @db.Timestamptz
+
+  phmArea PhmArea? @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+  mothers Mother[]
+
+  @@map("families")
+}
+
+// -------------------------------------------------------------
+// 4. Mothers
+// -------------------------------------------------------------
+model Mother {
+  id                        String    @id @default(uuid()) @db.Uuid
+  phmAreaId                 String?   @map("phm_area_id") @db.Uuid
+  familyId                  String    @map("family_id") @db.Uuid
+  qrToken                   String    @unique @map("qr_token")
+  fullName                  String    @map("full_name")
+  nic                       String?   @unique
+  dob                       DateTime? @db.Date
+  phone                     String?
+  bloodGroup                String?   @map("blood_group")
+  chronicConditionsJson     String?   @default("[]") @map("chronic_conditions_json")
+  fertilityTreatmentHistory Int       @default(0) @map("fertility_treatment_history")
+  prevMiscarriagesCount     Int       @default(0) @map("prev_miscarriages_count")
+  prevStillbirthsCount      Int       @default(0) @map("prev_stillbirths_count")
+  prevCSectionsCount        Int       @default(0) @map("prev_c_sections_count")
+  planningPregnancy         Int       @default(0) @map("planning_pregnancy")
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                 DateTime? @map("deleted_at") @db.Timestamptz
+
+  phmArea       PhmArea?             @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+  family        Family               @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  pregnancies   Pregnancy[]
+  children      Child[]
+  tasks         PhmTask[]
+  portalInvites MotherPortalInvite[]
+
+  @@map("mothers")
+}
+
+// -------------------------------------------------------------
+// 5. Pregnancies
+// -------------------------------------------------------------
+model Pregnancy {
+  id                        String          @id @default(uuid()) @db.Uuid
+  phmAreaId                 String?         @map("phm_area_id") @db.Uuid
+  motherId                  String          @map("mother_id") @db.Uuid
+  gravida                   Int
+  para                      Int
+  lrmpDate                  DateTime        @map("lrmp_date") @db.Date
+  eddDate                   DateTime        @map("edd_date") @db.Date
+  isPreciousPregnancy       Int             @default(0) @map("is_precious_pregnancy")
+  riskLevel                 RiskLevel       @default(GREEN) @map("risk_level")
+  riskScore                 Int             @default(0) @map("risk_score")
+  riskFactorsJson           String?         @default("[]") @map("risk_factors_json")
+  status                    PregnancyStatus @default(ACTIVE)
+  deliveryDate              DateTime?       @map("delivery_date") @db.Date
+  bookingWeightKg           Float?          @map("booking_weight_kg")
+  bookingHeightCm           Float?          @map("booking_height_cm")
+  bookingBmi                Float?          @map("booking_bmi")
+  hospitalDeliveryNotesJson String?         @map("hospital_delivery_notes_json")
+  createdAt                 DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                 DateTime?       @map("deleted_at") @db.Timestamptz
+
+  phmArea         PhmArea?         @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+  mother          Mother           @relation(fields: [motherId], references: [id], onDelete: Cascade)
+  antenatalVisits AntenatalVisit[]
+  fetalKickLogs   FetalKickLog[]
+  children        Child[]
+
+  @@map("pregnancies")
+}
+
+// -------------------------------------------------------------
+// 6. Antenatal Visits
+// -------------------------------------------------------------
+model AntenatalVisit {
+  id                   String    @id @default(uuid()) @db.Uuid
+  phmAreaId            String?   @map("phm_area_id") @db.Uuid
+  pregnancyId          String    @map("pregnancy_id") @db.Uuid
+  visitDate            DateTime  @map("visit_date") @db.Date
+  pogWeeks             Int       @map("pog_weeks")
+  pogDays              Int       @map("pog_days")
+  weightKg             Float?    @map("weight_kg")
+  bpSystolic           Int?      @map("bp_systolic")
+  bpDiastolic          Int?      @map("bp_diastolic")
+  urineAlbumin         String?   @map("urine_albumin")
+  urineSugar           String?   @map("urine_sugar")
+  pallor               Int?      @default(0)
+  edema                Int?      @default(0)
+  fundalHeightCm       Float?    @map("fundal_height_cm")
+  fetalHeartRate       Int?      @map("fetal_heart_rate")
+  fetalMovementPresent Int?      @default(1) @map("fetal_movement_present")
+  fetalPresentation    String?   @map("fetal_presentation")
+  ironFolateGiven      Int?      @default(0) @map("iron_folate_given")
+  calciumGiven         Int?      @default(0) @map("calcium_given")
+  vitaminCGiven        Int?      @default(0) @map("vitamin_c_given")
+  notes                String?
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt            DateTime? @map("deleted_at") @db.Timestamptz
+
+  phmArea   PhmArea?  @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+  pregnancy Pregnancy @relation(fields: [pregnancyId], references: [id], onDelete: Cascade)
+
+  @@map("antenatal_visits")
+}
+
+// -------------------------------------------------------------
+// 7. Fetal Kick Logs (Mother Companion Portal)
+// -------------------------------------------------------------
+model FetalKickLog {
+  id                   String   @id @default(uuid()) @db.Uuid
+  pregnancyId          String   @map("pregnancy_id") @db.Uuid
+  logDate              DateTime @map("log_date") @db.Date
+  startTime            String   @map("start_time")
+  tenthKickTime        String?  @map("tenth_kick_time")
+  kickCount            Int      @default(0) @map("kick_count")
+  durationMinutes      Int?     @map("duration_minutes")
+  reducedMovementFlag  Boolean  @default(false) @map("reduced_movement_flag")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  pregnancy Pregnancy @relation(fields: [pregnancyId], references: [id], onDelete: Cascade)
+
+  @@map("fetal_kick_logs")
+}
+
+// -------------------------------------------------------------
+// 8. Children (CHDR)
+// -------------------------------------------------------------
+model Child {
+  id                         String          @id @default(uuid()) @db.Uuid
+  phmAreaId                  String?         @map("phm_area_id") @db.Uuid
+  motherId                   String          @map("mother_id") @db.Uuid
+  pregnancyId                String?         @map("pregnancy_id") @db.Uuid
+  qrToken                    String          @unique @map("qr_token")
+  fullName                   String          @map("full_name")
+  dob                        DateTime        @db.Date
+  gender                     Gender
+  birthWeightKg              Float?          @map("birth_weight_kg")
+  gestationalAgeAtBirthWeeks Int?            @map("gestational_age_at_birth_weeks")
+  nutritionStatus            NutritionStatus @default(NORMAL) @map("nutrition_status")
+  growthFalteringFlag        Int             @default(0) @map("growth_faltering_flag")
+  createdAt                  DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt                  DateTime?       @map("deleted_at") @db.Timestamptz
+
+  phmArea            PhmArea?            @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+  mother             Mother              @relation(fields: [motherId], references: [id], onDelete: Cascade)
+  pregnancy          Pregnancy?          @relation(fields: [pregnancyId], references: [id], onDelete: SetNull)
+  growthRecords      ChildGrowthRecord[]
+  immunizations      ChildImmunization[]
+  tasks              PhmTask[]
+
+  @@map("children")
+}
+
+// -------------------------------------------------------------
+// 9. Child Growth Records
+// -------------------------------------------------------------
+model ChildGrowthRecord {
+  id                  String    @id @default(uuid()) @db.Uuid
+  phmAreaId           String?   @map("phm_area_id") @db.Uuid
+  childId             String    @map("child_id") @db.Uuid
+  recordedDate        DateTime  @map("recorded_date") @db.Date
+  ageMonths           Int       @map("age_months")
+  weightKg            Float?    @map("weight_kg")
+  heightCm            Float?    @map("height_cm")
+  headCircumferenceCm Float?    @map("head_circumference_cm")
+  milestonesJson      String?   @default("[]") @map("milestones_json")
+  supplementsJson     String?   @default("[]") @map("supplements_json")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt           DateTime? @map("deleted_at") @db.Timestamptz
+
+  phmArea PhmArea? @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+  child   Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@map("child_growth_records")
+}
+
+// -------------------------------------------------------------
+// 10. Child Immunizations
+// -------------------------------------------------------------
+model ChildImmunization {
+  id            String             @id @default(uuid()) @db.Uuid
+  phmAreaId     String?            @map("phm_area_id") @db.Uuid
+  childId       String             @map("child_id") @db.Uuid
+  vaccineCode   String             @map("vaccine_code")
+  vaccineName   String             @map("vaccine_name")
+  scheduledDate DateTime           @map("scheduled_date") @db.Date
+  givenDate     DateTime?          @map("given_date") @db.Date
+  status        ImmunizationStatus @default(PENDING)
+  batchNumber   String?            @map("batch_number")
+  adverseEvents String?            @map("adverse_events")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt     DateTime?          @map("deleted_at") @db.Timestamptz
+
+  phmArea PhmArea? @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+  child   Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@map("child_immunizations")
+}
+
+// -------------------------------------------------------------
+// 11. Field Tasks & Reminders
+// -------------------------------------------------------------
+model PhmTask {
+  id          String     @id @default(uuid()) @db.Uuid
+  phmAreaId   String?    @map("phm_area_id") @db.Uuid
+  category    String
+  dueDate     DateTime   @map("due_date") @db.Date
+  status      TaskStatus @default(PENDING)
+  motherId    String?    @map("mother_id") @db.Uuid
+  childId     String?    @map("child_id") @db.Uuid
+  title       String
+  description String?
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt   DateTime?  @map("deleted_at") @db.Timestamptz
+
+  phmArea PhmArea? @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+  mother  Mother?  @relation(fields: [motherId], references: [id], onDelete: Cascade)
+  child   Child?   @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  @@map("tasks")
+}
+
+// -------------------------------------------------------------
+// 12. Mother Companion Portal Invites & PINs
+// -------------------------------------------------------------
+model MotherPortalInvite {
+  id           String    @id @default(uuid()) @db.Uuid
+  motherId     String    @map("mother_id") @db.Uuid
+  phmAreaId    String?   @map("phm_area_id") @db.Uuid
+  inviteCode   String    @unique @map("invite_code")
+  pinHash      String?   @map("pin_hash")
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz
+  claimedAt    DateTime? @map("claimed_at") @db.Timestamptz
+  claimedByNic String?   @map("claimed_by_nic")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  mother  Mother   @relation(fields: [motherId], references: [id], onDelete: Cascade)
+  phmArea PhmArea? @relation(fields: [phmAreaId], references: [id], onDelete: SetNull)
+
+  @@map("mother_portal_invites")
+}
+
+// -------------------------------------------------------------
+// 13. User Audit Logs (Compliance & Security)
+// -------------------------------------------------------------
+model UserAuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  performedBy  String?  @map("performed_by") @db.Uuid
+  targetUserId String?  @map("target_user_id") @db.Uuid
+  action       String
+  detailsJson  String?  @default("{}") @map("details_json")
+  ipAddress    String?  @map("ip_address")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  performer Profile? @relation("AuditPerformer", fields: [performedBy], references: [id], onDelete: SetNull)
+
+  @@map("user_audit_logs")
+}

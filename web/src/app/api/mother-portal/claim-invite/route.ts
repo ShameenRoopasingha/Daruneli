@@ -7,14 +7,34 @@ import {
   signMotherSessionToken,
 } from '@/lib/motherAuthUtils';
 import { findDemoMother } from '@/lib/demoMothers';
+import { ClaimInviteSchema } from '@/lib/validations';
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const rawCode = String(body.invite_code || '').trim().toUpperCase();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: 'Invalid JSON request payload.' },
+        { status: 400 }
+      );
+    }
+
+    const parseResult = ClaimInviteSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      const issue = parseResult.error.issues[0];
+      return NextResponse.json(
+        { success: false, message: issue?.message || 'Invalid claim request parameters.' },
+        { status: 400 }
+      );
+    }
+
+    const rawCode = (parseResult.data.invite_code || '').toUpperCase();
     const cleanCode = sanitizeInviteCode(rawCode);
-    const dob = normalizeDate(String(body.dob || ''));
-    const pin = String(body.pin || '').trim();
+    const dob = normalizeDate(parseResult.data.dob || parseResult.data.nic || '');
+    const pin = parseResult.data.pin;
 
     if (!cleanCode) {
       return NextResponse.json(
@@ -26,13 +46,6 @@ export async function POST(req: NextRequest) {
     if (!dob) {
       return NextResponse.json(
         { success: false, message: 'Valid Date of Birth is required for identity verification.' },
-        { status: 400 }
-      );
-    }
-
-    if (!/^\d{4}$/.test(pin)) {
-      return NextResponse.json(
-        { success: false, message: 'Please provide a 4-digit numeric PIN.' },
         { status: 400 }
       );
     }
