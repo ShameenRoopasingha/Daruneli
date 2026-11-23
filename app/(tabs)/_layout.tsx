@@ -57,13 +57,13 @@ export default function TabLayout() {
         options={{
           title: t('tabs.dashboard', 'Today'),
           headerTitle: () => (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Image
-                source={require('@/assets/images/icon.png')}
-                style={{ width: 32, height: 32, borderRadius: 8 }}
+                source={require('@/assets/images/daruneli-emblem.png')}
+                style={{ width: 38, height: 38 }}
                 resizeMode="contain"
               />
-              <Text style={{ fontSize: 17, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.3 }}>
+              <Text style={{ fontSize: 18, fontWeight: '900', color: COLORS.textPrimary, letterSpacing: -0.3 }}>
                 {t('dashboard.headerTitle', 'දරුනැලි • අද දින')}
               </Text>
             </View>

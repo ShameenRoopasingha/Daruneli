@@ -92,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10 rounded-xl overflow-hidden shrink-0 shadow-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
               <Image
-                src="/images/daruneli-icon.png"
+                src="/images/daruneli-emblem.png"
                 alt="Daruneli"
                 fill
                 sizes="40px"
