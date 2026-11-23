@@ -70,27 +70,35 @@ export const HighRiskWatchlist: React.FC<HighRiskWatchlistProps> = ({
                 </View>
               )}
 
-              {/* Action Buttons: 1-Tap Call, WhatsApp, Log Visit */}
-              <View style={styles.cardActionsRow}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={[styles.actionBtn, styles.callBtn]}
-                  onPress={() => onCall(mother.phone)}
-                >
-                  <Text style={styles.callBtnText}>📞 {t('dashboard.call', 'Call')}</Text>
-                </TouchableOpacity>
+              {/* Action Buttons Grid: Row 1 = Call & WhatsApp (2 cols), Row 2 = New Visit (full width) */}
+              <View style={styles.cardActionsGrid}>
+                {/* Row 1: Call & WhatsApp */}
+                <View style={styles.actionRowTop}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={[styles.actionBtn, styles.callBtn]}
+                    onPress={() => onCall(mother.phone)}
+                  >
+                    <Text style={styles.callBtnText} numberOfLines={1}>
+                      📞 {t('dashboard.call', 'Call')}
+                    </Text>
+                  </TouchableOpacity>
 
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={[styles.actionBtn, styles.whatsappBtn]}
-                  onPress={() => onWhatsApp(mother.phone, mother.full_name)}
-                >
-                  <Text style={styles.whatsappBtnText}>💬 {t('dashboard.whatsapp', 'WhatsApp')}</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    style={[styles.actionBtn, styles.whatsappBtn]}
+                    onPress={() => onWhatsApp(mother.phone, mother.full_name)}
+                  >
+                    <Text style={styles.whatsappBtnText} numberOfLines={1}>
+                      💬 {t('dashboard.whatsapp', 'WhatsApp')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
+                {/* Row 2: Full-width New Clinical Visit button */}
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  style={[styles.actionBtn, styles.visitBtn]}
+                  style={[styles.actionBtnFull, styles.visitBtn]}
                   onPress={() => {
                     if (mother.pregnancy_id) {
                       router.push(`/mother/visit/${mother.pregnancy_id}` as any);
@@ -99,7 +107,9 @@ export const HighRiskWatchlist: React.FC<HighRiskWatchlistProps> = ({
                     }
                   }}
                 >
-                  <Text style={styles.visitBtnText}>📝 {t('mother.newVisit', 'Log Visit')}</Text>
+                  <Text style={styles.visitBtnText} numberOfLines={1}>
+                    📝 {t('mother.newVisit', 'Log Visit')}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -201,14 +211,28 @@ const styles = StyleSheet.create({
     color: COLORS.risk.red.text,
     fontWeight: '500',
   },
-  cardActionsRow: {
+  cardActionsGrid: {
+    gap: 7,
+    marginTop: 2,
+  },
+  actionRowTop: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 7,
   },
   actionBtn: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: RADIUS.sm,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  actionBtnFull: {
+    width: '100%',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 44,
@@ -219,7 +243,7 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   callBtnText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#1D4ED8',
   },
@@ -229,7 +253,7 @@ const styles = StyleSheet.create({
     borderColor: '#A7F3D0',
   },
   whatsappBtnText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#047857',
   },
@@ -239,7 +263,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primaryBorder,
   },
   visitBtnText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
