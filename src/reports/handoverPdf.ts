@@ -1,6 +1,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { MotherWithPregnancy, AntenatalVisit } from '../db/motherRepo';
+import { SRI_LANKA_EMBLEM_DATA_URI } from './emblemBase64';
 
 export interface HandoverPdfParams {
   mother: MotherWithPregnancy;
@@ -190,10 +191,15 @@ export function renderHandoverHtml(params: HandoverPdfParams): string {
   </style>
 </head>
 <body>
-  <div class="header">
-    <div class="national-title">Family Health Bureau • Ministry of Health Sri Lanka</div>
-    <div class="main-title">Maternal Clinical Handover Summary (H544 Transfer Record)</div>
-    <div class="subtitle">Origin Area: ${phmAreaName} | ${mohDivision}</div>
+  <div class="header" style="display: flex; align-items: center; justify-content: space-between;">
+    <div style="flex: 1;">
+      <div class="national-title">Family Health Bureau • Ministry of Health Sri Lanka</div>
+      <div class="main-title">Maternal Clinical Handover Summary (H544 Transfer Record)</div>
+      <div class="subtitle">Origin Area: ${phmAreaName} | ${mohDivision}</div>
+    </div>
+    <div style="margin-left: 16px; text-align: right;">
+      <img src="${SRI_LANKA_EMBLEM_DATA_URI}" width="42" height="60" style="object-fit: contain;" alt="State Emblem" />
+    </div>
   </div>
 
   <div class="transfer-badge-box">

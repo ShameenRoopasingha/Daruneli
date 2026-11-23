@@ -218,6 +218,20 @@ export default function H509ReportsPage() {
                   className="object-contain object-left"
                 />
               </div>
+
+              {/* Official State Emblem of Sri Lanka */}
+              <div className="flex flex-col items-center">
+                <div className="relative w-11 h-16">
+                  <Image
+                    src="/images/sri-lanka-emblem.png"
+                    alt="State Emblem of Sri Lanka"
+                    fill
+                    sizes="44px"
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+
               <div className="text-right">
                 <span className="text-[11px] font-black tracking-wider text-teal-800 dark:text-teal-400 uppercase block">
                   DARUNELI DIGITAL HEALTH SYSTEM

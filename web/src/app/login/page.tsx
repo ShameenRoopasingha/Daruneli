@@ -167,7 +167,16 @@ export default function LoginPage() {
           <span>🚀 Enter Offline Demo Dashboard (Maharagama MOH)</span>
         </button>
 
-        <div className="text-center mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-0.5">
+        <div className="text-center mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-1 flex flex-col items-center">
+          <div className="relative w-7 h-10 mb-1 opacity-95">
+            <Image
+              src="/images/sri-lanka-emblem.png"
+              alt="State Emblem of Sri Lanka"
+              fill
+              sizes="28px"
+              className="object-contain"
+            />
+          </div>
           <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
             MINISTRY OF HEALTH, SRI LANKA
           </p>

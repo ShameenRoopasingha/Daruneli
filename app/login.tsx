@@ -257,10 +257,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   footerEmblem: {
-    width: 26,
-    height: 30,
+    width: 24,
+    height: 34,
     marginBottom: 6,
-    opacity: 0.8,
+    opacity: 0.95,
   },
   footerMinistry: {
     fontSize: 11,

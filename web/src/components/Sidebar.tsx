@@ -180,8 +180,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <LogOut className="w-4 h-4" />
             <span>{t('nav.sign_out')}</span>
           </Link>
-          <div className="mt-3 text-[10px] text-slate-400 dark:text-slate-500 text-center">
-            Family Health Bureau • Sri Lanka
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-center gap-2">
+            <div className="relative w-4 h-6 shrink-0 opacity-90">
+              <Image
+                src="/images/sri-lanka-emblem.png"
+                alt="State Emblem of Sri Lanka"
+                fill
+                sizes="16px"
+                className="object-contain"
+              />
+            </div>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
+              Family Health Bureau • Sri Lanka
+            </span>
           </div>
         </div>
       </aside>

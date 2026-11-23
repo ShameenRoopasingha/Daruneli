@@ -373,10 +373,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emblemImage: {
-    width: 28,
-    height: 32,
+    width: 26,
+    height: 37,
     marginBottom: 8,
-    opacity: 0.85,
+    opacity: 0.95,
   },
   ministryText: {
     fontSize: 11.5,

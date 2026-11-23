@@ -9,6 +9,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Switch,
+  Image,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -487,9 +488,11 @@ export default function AreaScreen() {
       {/* 5. FORM H509 MONTHLY SUMMARY REPORT & PDF EXPORT */}
       <View style={styles.reportCard}>
         <View style={styles.reportHeader}>
-          <View style={styles.reportIconCircle}>
-            <Text style={styles.reportIcon}>📑</Text>
-          </View>
+          <Image
+            source={require('@/assets/images/sri-lanka-emblem.png')}
+            style={styles.reportEmblemImage}
+            resizeMode="contain"
+          />
           <View style={{ flex: 1 }}>
             <Text style={styles.reportTitle}>
               {t('area.monthlyReport', 'Form H509: Monthly Summary Report')}
@@ -1044,11 +1047,15 @@ const styles = StyleSheet.create({
   reportHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
     marginBottom: 14,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.surfaceSubtle,
     paddingBottom: 12,
+  },
+  reportEmblemImage: {
+    width: 28,
+    height: 40,
   },
   reportIconCircle: {
     width: 38,

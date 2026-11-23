@@ -194,6 +194,16 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({ onUnlocked }) => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Ministry of Health Footer */}
+      <View style={styles.footerBrand}>
+        <Image
+          source={require('@/assets/images/sri-lanka-emblem.png')}
+          style={styles.footerEmblem}
+          resizeMode="contain"
+        />
+        <Text style={styles.footerMinistry}>Ministry of Health • Sri Lanka</Text>
+      </View>
     </SafeAreaView>
   );
 };
@@ -305,6 +315,25 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '700',
     color: '#F8FAFC',
+  },
+  footerBrand: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  footerEmblem: {
+    width: 20,
+    height: 28,
+    opacity: 0.85,
+    marginBottom: 4,
+  },
+  footerMinistry: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   specialKeyIcon: {
     fontSize: 22,

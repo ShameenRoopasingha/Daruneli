@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Menu, Calendar, WifiOff } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageToggle } from './LanguageToggle';
@@ -27,8 +28,16 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold text-slate-700 dark:text-slate-300">
-          <Calendar className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+        <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold text-slate-700 dark:text-slate-300">
+          <div className="relative w-3.5 h-5 shrink-0 opacity-90">
+            <Image
+              src="/images/sri-lanka-emblem.png"
+              alt="State Emblem of Sri Lanka"
+              fill
+              sizes="14px"
+              className="object-contain"
+            />
+          </div>
           <span>{todayFormatted}</span>
           <span className="text-slate-400 dark:text-slate-500">•</span>
           <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">

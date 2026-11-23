@@ -101,7 +101,7 @@ export const BrandLoading: React.FC<BrandLoadingProps> = ({
 
       {/* Footer Block */}
       <div className="relative z-10 flex flex-col items-center text-center pb-4 pt-8">
-        <div className="relative w-7 h-8 mb-2 opacity-85">
+        <div className="relative w-7 h-10 mb-2 opacity-95">
           <Image
             src="/images/sri-lanka-emblem.png"
             alt="Sri Lanka State Emblem"

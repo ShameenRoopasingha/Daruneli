@@ -1,5 +1,6 @@
 import type { H509ReportData } from './h509Aggregator';
 import { DARUNELI_ICON_BASE64 } from './logoBase64';
+import { SRI_LANKA_EMBLEM_DATA_URI } from './emblemBase64';
 
 export function renderH509Html(data: H509ReportData): string {
   const { metadata, section1_antenatal, section2_deliveries, section3_childHealth, section4_immunizations, section5_priorityFollowUp } = data;
@@ -194,7 +195,7 @@ export function renderH509Html(data: H509ReportData): string {
           <div style="font-size: 8.5pt; font-weight: 600; color: #64748B;">National Digital Health Platform for Public Health Midwives (PHM)</div>
         </td>
         <td style="vertical-align: middle; text-align: right; width: 60px;">
-          <div style="font-size: 18pt; line-height: 1;">🇱🇰</div>
+          <img src="${SRI_LANKA_EMBLEM_DATA_URI}" width="34" height="48" style="display: inline-block; vertical-align: middle;" alt="State Emblem of Sri Lanka" />
         </td>
       </tr>
     </table>
