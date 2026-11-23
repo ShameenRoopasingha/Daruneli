@@ -33,6 +33,15 @@ import {
   type ResolvedDayPlan,
 } from '@/src/engine/scheduleEngine';
 
+function formatDisplayDate(isoDate?: string | null): string {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return isoDate;
+}
+
 export default function DashboardScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
@@ -330,7 +339,9 @@ export default function DashboardScreen() {
                 <View style={styles.taskTypeBadge}>
                   <Text style={styles.taskTypeText}>{ot.task_type.replace(/_/g, ' ')}</Text>
                 </View>
-                <Text style={styles.overdueDate}>Due: {ot.due_date}</Text>
+                <Text style={styles.overdueDate}>
+                  {t('dashboard.due', 'නියමිත')}: {formatDisplayDate(ot.due_date)}
+                </Text>
               </View>
 
               <Text style={styles.overdueTargetName}>{ot.target_name || 'Recipient'}</Text>
@@ -540,12 +551,13 @@ const styles = StyleSheet.create({
   syncPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 7,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: RADIUS.full,
     borderWidth: 1,
     gap: 8,
     flexShrink: 1,
+    minHeight: 44,
   },
   syncOnline: {
     backgroundColor: COLORS.surface,
@@ -596,11 +608,14 @@ const styles = StyleSheet.create({
   },
   wheelPill: {
     backgroundColor: '#EEF2FF',
-    paddingVertical: 7,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: RADIUS.full,
     borderWidth: 1,
     borderColor: '#C7D2FE',
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
     ...SHADOWS.card,
   },
   wheelPillText: {
@@ -610,11 +625,14 @@ const styles = StyleSheet.create({
   },
   loginPill: {
     backgroundColor: COLORS.surface,
-    paddingVertical: 7,
+    paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: RADIUS.full,
     borderWidth: 1,
     borderColor: COLORS.borderHairline,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
     ...SHADOWS.card,
   },
   loginPillText: {
@@ -631,8 +649,10 @@ const styles = StyleSheet.create({
   metricCard: {
     flexBasis: '47%',
     flexGrow: 1,
+    minHeight: 104,
+    justifyContent: 'space-between',
     backgroundColor: COLORS.surface,
-    padding: 14,
+    padding: 12,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.borderHairline,
@@ -651,6 +671,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.overline,
     color: COLORS.textSecondary,
     marginBottom: 4,
+    minHeight: 28,
   },
   metricValue: {
     fontSize: 28,
@@ -962,16 +983,19 @@ const styles = StyleSheet.create({
   },
   doneBtn: {
     backgroundColor: COLORS.primaryLight,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: RADIUS.xs,
     borderWidth: 1,
     borderColor: COLORS.primaryBorder,
+    minHeight: 44,
+    minWidth: 72,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   doneBtnText: {
     color: COLORS.primaryDark,
-    fontWeight: '700',
-    fontSize: 12,
+    fontWeight: '800',
+    fontSize: 13,
   },
   emptyCard: {
     backgroundColor: COLORS.surface,

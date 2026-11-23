@@ -34,7 +34,7 @@ export default function TabLayout() {
           elevation: 4,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '700',
           marginTop: -2,
         },
@@ -55,7 +55,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: t('tabs.dashboard', 'Today'),
-          headerTitle: 'දරුනැළි • ' + t('dashboard.title', "Today's Dashboard"),
+          headerTitle: t('dashboard.headerTitle', 'දරුනැළි • අද දින'),
           tabBarIcon: ({ focused }) => <TabIcon icon="📋" label="Today" focused={focused} />,
         }}
       />
@@ -112,6 +112,5 @@ const styles = StyleSheet.create({
   },
   iconTextFocused: {
     opacity: 1,
-    transform: [{ scale: 1.1 }],
   },
 });

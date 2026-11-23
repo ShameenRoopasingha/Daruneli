@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import {
   getPregnancy,
@@ -65,6 +67,31 @@ export default function AntenatalVisitScreen() {
   const [showReferralModal, setShowReferralModal] = useState(false);
   const [referralReasons, setReferralReasons] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSavedRef = useRef(false);
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const unsubscribe = (navigation as any).addListener('beforeRemove', (e: any) => {
+      if (isSavedRef.current) return;
+      if (!notes && bpSystolic === '120' && bpDiastolic === '80' && dangerSigns.length === 0) {
+        return;
+      }
+      e.preventDefault();
+      Alert.alert(
+        t('visit.discardTitle', 'සටහන් ඉවත් කරන්නද?'),
+        t('visit.discardDesc', 'ඇතුළත් කළ සායනික දත්ත සුරැකී නොමැත. ඉවත් වීමට අවශ්‍යද?'),
+        [
+          { text: t('common.cancel', 'නැත'), style: 'cancel' },
+          {
+            text: t('common.discard', 'ඉවත් වන්න'),
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ]
+      );
+    });
+    return unsubscribe;
+  }, [navigation, notes, bpSystolic, bpDiastolic, dangerSigns, t]);
 
   useEffect(() => {
     async function loadInfo() {
@@ -167,20 +194,30 @@ export default function AntenatalVisitScreen() {
         notes: `Follow-up visit (${riskResult.level} Risk). Recalculated score: ${riskResult.score}`,
       });
 
+      isSavedRef.current = true;
       Alert.alert(
-        'Visit Saved',
+        t('common.success', 'සාර්ථකයි'),
         `Visit logged successfully. Risk Level: ${riskResult.level}. Next visit scheduled in ${riskResult.recommendedFollowUpDays} days (${nextDateStr}).`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'Failed to save antenatal visit');
+      Alert.alert(t('common.error', 'දෝෂයකි'), e?.message || 'Failed to save antenatal visit');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: COLORS.canvas }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       {/* 1. MOTHER SUMMARY BAR */}
       {mother && (
         <View style={styles.summaryBar}>
@@ -410,7 +447,8 @@ export default function AntenatalVisitScreen() {
           handleSaveVisit(true); // Proceed with saving after acknowledgment
         }}
       />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -561,8 +599,8 @@ const styles = StyleSheet.create({
   stepBtn: {
     paddingVertical: 10,
     paddingHorizontal: 14,
-    minWidth: 42,
-    minHeight: 42,
+    minWidth: 46,
+    minHeight: 46,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.surfaceSubtle,
     borderWidth: 1,

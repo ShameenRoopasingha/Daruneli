@@ -20,6 +20,15 @@ import { RiskBadge } from '@/src/components/RiskBadge';
 import { calculatePOA, formatPOA } from '@/src/engine/pregnancyCalc';
 import { COLORS, RADIUS, SHADOWS } from '@/src/theme/tokens';
 
+function formatDisplayDate(isoDate?: string | null): string {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return isoDate;
+}
+
 type TabMode = 'MOTHERS' | 'CHILDREN';
 type FilterOption = 'ALL' | 'RED' | 'YELLOW' | 'FALTERING';
 
@@ -103,6 +112,15 @@ export default function DirectoryScreen() {
             placeholderTextColor={COLORS.textTertiary}
             clearButtonMode="while-editing"
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={styles.clearBtn}
+            >
+              <Text style={styles.clearBtnText}>✕</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -363,7 +381,7 @@ export default function DirectoryScreen() {
                   </View>
                   <View style={styles.cardDetailItem}>
                     <Text style={styles.detailLabel}>DOB</Text>
-                    <Text style={styles.detailVal}>{item.dob}</Text>
+                    <Text style={styles.detailVal}>{formatDisplayDate(item.dob)}</Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -415,6 +433,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textPrimary,
   },
+  clearBtn: {
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clearBtnText: {
+    fontSize: 14,
+    color: COLORS.textSecondary,
+    fontWeight: '700',
+  },
   segmentedContainer: {
     paddingHorizontal: 16,
     marginBottom: 8,
@@ -455,13 +483,13 @@ const styles = StyleSheet.create({
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.borderSubtle,
-    gap: 5,
+    gap: 6,
+    minHeight: 44,
   },
   chipDot: {
     width: 6,
@@ -631,14 +659,18 @@ const styles = StyleSheet.create({
     bottom: 24,
     right: 20,
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    paddingHorizontal: 22,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
     borderRadius: RADIUS.full,
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     ...SHADOWS.floating,
   },
   fabText: {
     color: COLORS.textWhite,
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 13,
   },
 });

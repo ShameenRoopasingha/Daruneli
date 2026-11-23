@@ -10,6 +10,8 @@ import {
   useWindowDimensions,
   TextInput,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -39,6 +41,15 @@ import {
 } from '@/src/components/charts';
 import { calculatePOA, formatPOA, formatEDD } from '@/src/engine/pregnancyCalc';
 import { COLORS, RADIUS, SHADOWS } from '@/src/theme/tokens';
+
+function formatDisplayDate(isoDate?: string | null): string {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return isoDate;
+}
 
 function safeParseJson<T>(raw: string | null | undefined, fallback: T): T {
   if (!raw) return fallback;
@@ -194,8 +205,12 @@ export default function MotherProfileScreen() {
       await updateHospitalDeliveryNotes(pregnancy.id, updatedNotes);
       setShowNotesModal(false);
       loadData();
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Error saving delivery notes:', e);
+      Alert.alert(
+        t('common.error', 'දෝෂයකි'),
+        (t('mother.deliverySaveFailed', 'ප්‍රසූති සටහන් සුරැකීම අසාර්ථක විය') + ': ' + (e?.message || ''))
+      );
     } finally {
       setIsSavingNotes(false);
     }
@@ -593,7 +608,7 @@ export default function MotherProfileScreen() {
               <View key={v.id} style={styles.visitItem}>
                 <View style={styles.visitTop}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.visitDate}>{v.visit_date}</Text>
+                    <Text style={styles.visitDate}>{formatDisplayDate(v.visit_date)}</Text>
                     {v.poa_weeks && (
                       <Text style={styles.visitPoa}>• {v.poa_weeks.toFixed(1)} wks</Text>
                     )}
@@ -674,7 +689,7 @@ export default function MotherProfileScreen() {
                   <View style={styles.nextVisitRow}>
                     <Text style={styles.nextVisitText}>
                       📅 Next checkup due:{' '}
-                      <Text style={styles.nextVisitBold}>{v.next_visit_date}</Text>
+                      <Text style={styles.nextVisitBold}>{formatDisplayDate(v.next_visit_date)}</Text>
                     </Text>
                   </View>
                 )}
@@ -850,13 +865,29 @@ export default function MotherProfileScreen() {
       />
 
       {/* EDIT DELIVERY NOTES MODAL */}
-      <Modal visible={showNotesModal} animationType="slide" transparent>
-        <View style={styles.notesModalOverlay}>
+      <Modal
+        visible={showNotesModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowNotesModal(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.notesModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.notesModalContent}>
-            <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+            <ScrollView
+              contentContainerStyle={{ paddingBottom: 20 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
               <View style={styles.notesModalHeader}>
                 <Text style={styles.notesModalTitle}>Edit Delivery & Partograph Notes</Text>
-                <TouchableOpacity onPress={() => setShowNotesModal(false)}>
+                <TouchableOpacity
+                  onPress={() => setShowNotesModal(false)}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  style={{ minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }}
+                >
                   <Text style={styles.notesModalClose}>✕</Text>
                 </TouchableOpacity>
               </View>
@@ -867,6 +898,7 @@ export default function MotherProfileScreen() {
                 value={deliveryModeInput}
                 onChangeText={setDeliveryModeInput}
                 placeholder="e.g. Spontaneous Vaginal / Caesarean"
+                placeholderTextColor={COLORS.textTertiary}
               />
 
               <Text style={styles.modalFieldLabel}>Apgar Score at 5 Minutes</Text>
@@ -876,6 +908,7 @@ export default function MotherProfileScreen() {
                 onChangeText={setApgarInput}
                 keyboardType="numeric"
                 placeholder="e.g. 10"
+                placeholderTextColor={COLORS.textTertiary}
               />
 
               <Text style={styles.modalFieldLabel}>Partograph & Labor Progression Summary</Text>
@@ -886,6 +919,7 @@ export default function MotherProfileScreen() {
                 multiline
                 numberOfLines={3}
                 placeholder="Details of cervical dilatation, membranes, descent..."
+                placeholderTextColor={COLORS.textTertiary}
               />
 
               <Text style={styles.modalFieldLabel}>CTG Tracing Summary</Text>
@@ -896,6 +930,7 @@ export default function MotherProfileScreen() {
                 multiline
                 numberOfLines={3}
                 placeholder="Baseline FHR, variability, accelerations, decelerations..."
+                placeholderTextColor={COLORS.textTertiary}
               />
 
               <TouchableOpacity
@@ -909,7 +944,7 @@ export default function MotherProfileScreen() {
               </TouchableOpacity>
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </ScrollView>
   );
@@ -1263,11 +1298,12 @@ const styles = StyleSheet.create({
   },
   obstetricGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginBottom: 12,
   },
   obsItem: {
-    flex: 1,
+    width: '48%',
     backgroundColor: COLORS.surfaceSubtle,
     borderRadius: RADIUS.sm,
     padding: 10,
@@ -1575,9 +1611,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDFA',
     borderWidth: 1,
     borderColor: '#5EEAD4',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   editNotesBtnText: {
     fontSize: 11,

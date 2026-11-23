@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -73,7 +74,8 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'android' ? 24 : 0}
     >
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* Language switcher */}
@@ -113,19 +115,19 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
-              placeholderTextColor={COLORS.textTertiary}
+              placeholderTextColor={COLORS.textSecondary}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
+            <Text style={styles.inputLabel}>{t('login.password', 'මුරපදය')}</Text>
             <TextInput
               style={styles.input}
               placeholder="••••••••"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              placeholderTextColor={COLORS.textTertiary}
+              placeholderTextColor={COLORS.textSecondary}
             />
           </View>
 
@@ -134,10 +136,16 @@ export default function LoginScreen() {
             style={[styles.primaryBtn, isLoading && styles.btnDisabled]}
             disabled={isLoading}
             onPress={handleSignIn}
+            accessibilityRole="button"
+            accessibilityState={{ busy: isLoading }}
           >
-            <Text style={styles.primaryBtnText}>
-              {isLoading ? 'Signing In...' : 'Sign In to Cloud'}
-            </Text>
+            {isLoading ? (
+              <ActivityIndicator size="small" color={COLORS.textWhite} />
+            ) : (
+              <Text style={styles.primaryBtnText}>
+                {t('login.signIn', 'වලාකුළු දත්ත සමමුහුර්ත පිවිසුම')}
+              </Text>
+            )}
           </TouchableOpacity>
 
           {/* Quick-fill button for testing */}
@@ -201,11 +209,14 @@ const styles = StyleSheet.create({
   },
   langBtn: {
     backgroundColor: COLORS.surface,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     borderRadius: RADIUS.full,
     borderWidth: 1,
-    borderColor: COLORS.borderHairline,
+    borderColor: COLORS.borderSubtle,
+    minHeight: 44,
+    minWidth: 90,
+    justifyContent: 'center',
+    alignItems: 'center',
     ...SHADOWS.card,
   },
   langText: {
@@ -318,14 +329,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDFA',
     borderWidth: 1,
     borderColor: '#99F6E4',
-    paddingVertical: 9,
+    paddingHorizontal: 16,
     borderRadius: RADIUS.full,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 10,
+    minHeight: 44,
   },
   quickFillText: {
     color: '#0D9488',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   divider: {
@@ -336,7 +349,7 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.surfaceSubtle,
+    backgroundColor: COLORS.borderSubtle,
   },
   dividerText: {
     marginHorizontal: 12,

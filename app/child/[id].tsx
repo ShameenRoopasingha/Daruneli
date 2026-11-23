@@ -22,6 +22,15 @@ import { ChdrGrowthCharts, FentonPretermChart } from '@/src/components/charts';
 import { calculateAgeMonths } from '@/src/engine/growthAnalyzer';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 
+function formatDisplayDate(isoDate?: string | null): string {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return isoDate;
+}
+
 export default function ChildProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -141,15 +150,17 @@ export default function ChildProfileScreen() {
 
         <View style={styles.birthStatsRow}>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>BIRTH WEIGHT</Text>
+            <Text style={styles.statLabel}>{t('child.birthWeight', 'උපන් බර')}</Text>
             <Text style={styles.statVal}>{child.birth_weight_kg ?? '-'} kg</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>GENDER</Text>
-            <Text style={styles.statVal}>{child.gender === 'M' ? 'Male' : 'Female'}</Text>
+            <Text style={styles.statLabel}>{t('child.gender', 'ස්ත්‍රී/පුරුෂ භාවය')}</Text>
+            <Text style={styles.statVal}>
+              {child.gender === 'M' ? t('child.male', 'පිරිමි') : t('child.female', 'ගැහැණු')}
+            </Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statLabel}>VACCINES GIVEN</Text>
+            <Text style={styles.statLabel}>{t('child.vaccinesGiven', 'ලබා දුන් එන්නත්')}</Text>
             <Text style={styles.statVal}>
               {immunizations.filter((i) => i.status === 'GIVEN').length}/{immunizations.length}
             </Text>
@@ -247,8 +258,8 @@ export default function ChildProfileScreen() {
                     </View>
                   </View>
                   <Text style={styles.vaxDate}>
-                    Scheduled: {imm.scheduled_date}
-                    {imm.given_date ? ` • Given: ${imm.given_date}` : ''}
+                    {t('child.scheduled', 'නියමිත')}: {formatDisplayDate(imm.scheduled_date)}
+                    {imm.given_date ? ` • ${t('child.given', 'ලබා දුන්')}: ${formatDisplayDate(imm.given_date)}` : ''}
                   </Text>
                 </View>
 
@@ -289,8 +300,10 @@ export default function ChildProfileScreen() {
             return (
               <View key={gr.id} style={styles.growthRow}>
                 <View style={styles.growthTop}>
-                  <Text style={styles.growthAge}>Age: {gr.age_months} months</Text>
-                  <Text style={styles.growthDate}>{gr.recorded_date}</Text>
+                  <Text style={styles.growthAge}>
+                    {t('child.age', 'වයස')}: {gr.age_months} {t('child.months', 'මාස')}
+                  </Text>
+                  <Text style={styles.growthDate}>{formatDisplayDate(gr.recorded_date)}</Text>
                 </View>
 
                 <View style={styles.growthMetrics}>

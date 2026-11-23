@@ -10,6 +10,14 @@
     "scan": "Scan QR",
     "area": "Area"
   },
+  "screens": {
+    "login": "Staff Sign In",
+    "motherProfile": "Mother Profile",
+    "registerMother": "Register Mother",
+    "antenatalVisit": "Antenatal Clinical Record",
+    "childProfile": "Child Health Development Record (CHDR)",
+    "logGrowth": "Log Growth & Milestones"
+  },
   "schedule": {
     "title": "Weekly Timetable",
     "subtitle": "Field & Clinic Master Schedule",
@@ -31,6 +39,7 @@
   },
   "dashboard": {
     "title": "Today's Dashboard",
+    "headerTitle": "DaruNali • Today",
     "activeMothers": "Active Mothers",
     "highRisk": "High Risk",
     "overdueAlerts": "Overdue Alerts",
@@ -41,10 +50,13 @@
     "redWatchlist": "High-Risk Watchlist",
     "todaySchedule": "Today's Schedule",
     "noTasks": "No tasks for today",
+    "noRedMothers": "No high-risk mothers currently flagged",
     "call": "Call",
     "whatsapp": "WhatsApp",
     "logVisit": "Log Visit",
-    "viewAll": "View All"
+    "viewAll": "View All",
+    "due": "Due",
+    "weeklyTier": "Weekly visit tier"
   },
   "directory": {
     "title": "Directory",
@@ -65,7 +77,13 @@
     "simulateTitle": "Simulate QR Scan (Demo)",
     "simulateDesc": "Select a person to simulate scanning their QR code",
     "noCamera": "Camera permission required",
-    "requestPermission": "Grant Camera Access"
+    "requestPermission": "Grant Camera Access",
+    "unrecognized": "QR Code Not Recognized",
+    "mothersCards": "Mothers' Clinic Cards",
+    "childrenCards": "Children's CHDR Cards",
+    "again": "Scan Again",
+    "torch": "Torch",
+    "manualSearch": "Or enter QR code / NIC manually"
   },
   "area": {
     "title": "PHM Area Overview",
@@ -113,7 +131,7 @@
     "prevStillbirths": "Previous Stillbirths",
     "prevCSections": "Previous C-Sections",
     "gestationalProgress": "Gestational Progress",
-    "edd": "Expected Delivery Date",
+    "edd": "Expected Delivery Date (EDD)",
     "poa": "Period of Amenorrhea",
     "weeks": "weeks",
     "riskLevel": "Risk Level",
@@ -122,7 +140,7 @@
     "bpTrend": "BP Trend",
     "weightTrend": "Weight Trend",
     "newVisit": "New Visit",
-    "markDelivered": "Mark as Delivered",
+    "markDelivered": "Record Delivery",
     "deliveryDate": "Delivery Date",
     "deliveryMode": "Delivery Mode",
     "babyName": "Baby Name",
@@ -132,7 +150,8 @@
     "cancel": "Cancel",
     "urgentReferral": "⚠️ URGENT VOG REFERRAL REQUIRED",
     "urgentReferralMsg": "This mother requires immediate referral to a VOG specialist based on current clinical findings.",
-    "referralAcknowledged": "Referral Acknowledged"
+    "referralAcknowledged": "Referral Acknowledged",
+    "deliverySaveFailed": "Failed to save delivery notes"
   },
   "visit": {
     "title": "Antenatal Visit",
@@ -157,7 +176,9 @@
     "thriposha": "Thriposha",
     "notes": "Notes",
     "nextVisitDate": "Next Visit Date",
-    "saveVisit": "Save Visit"
+    "saveVisit": "Save Visit",
+    "discardTitle": "Discard changes?",
+    "discardDesc": "You have unsaved clinical entries. Are you sure you want to discard them?"
   },
   "child": {
     "profile": "Child Profile (CHDR)",
@@ -172,8 +193,8 @@
     "years": "years",
     "nutritionStatus": "Nutrition Status",
     "normal": "Normal",
-    "mam": "MAM",
-    "sam": "SAM",
+    "mam": "MAM (Moderate Acute Malnutrition)",
+    "sam": "SAM (Severe Acute Malnutrition)",
     "growthFaltering": "Growth Faltering Alert",
     "growthFalteringMsg": "Weight has not increased across last 2 consecutive measurements. Refer for nutritional assessment.",
     "weightChart": "Weight-for-Age Chart",
@@ -181,6 +202,7 @@
     "markGiven": "Mark Given",
     "given": "Given",
     "pending": "Pending",
+    "scheduled": "Scheduled",
     "overdue": "Overdue",
     "logGrowth": "Log Growth",
     "weightKg": "Weight (kg)",
@@ -196,7 +218,9 @@
     "green": "LOW RISK",
     "yellow": "MODERATE RISK",
     "red": "HIGH RISK",
-    "followUp": "Follow-up in {{days}} days"
+    "followUp": "Follow-up in {{days}} days",
+    "followUp_one": "Follow-up in {{days}} day",
+    "followUp_other": "Follow-up in {{days}} days"
   },
   "common": {
     "save": "Save",
@@ -212,6 +236,38 @@
     "no": "No",
     "today": "Today",
     "kg": "kg",
-    "cm": "cm"
+    "cm": "cm",
+    "dateFormat": "DD/MM/YYYY",
+    "datePlaceholder": "DD/MM/YYYY",
+    "dateHint": "DD/MM/YYYY",
+    "required": "Required",
+    "invalidWeight": "Please enter a valid weight (kg)",
+    "nameRequired": "Please enter name",
+    "networkError": "Network connection error",
+    "syncing": "Syncing data...",
+    "retry": "Retry",
+    "close": "Close",
+    "goHome": "Go to Home Screen",
+    "discard": "Discard"
+  },
+  "login": {
+    "offlineAlertTitle": "Offline Demo Mode",
+    "offlineAlertDesc": "You can record field notes using the local SQLite database without cloud sign-in.",
+    "continueOffline": "Continue Offline",
+    "signIn": "Sign In to Cloud Sync",
+    "staffEmail": "Staff Email",
+    "password": "Password"
+  },
+  "danger": {
+    "bleeding": "Vaginal Bleeding",
+    "headache": "Severe Headache / Blurred Vision",
+    "edema": "Facial / Hand Edema",
+    "reducedFm": "Reduced Fetal Movements",
+    "abdominalPain": "Severe Abdominal Pain"
+  },
+  "chronic": {
+    "heartDisease": "Heart Disease",
+    "diabetes": "Diabetes Mellitus",
+    "hypertension": "Hypertension"
   }
 }

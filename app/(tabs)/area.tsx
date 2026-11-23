@@ -37,6 +37,18 @@ const MONTH_OPTIONS = [
   { month: 12, label: 'Dec' },
 ];
 
+function formatDateTime(iso?: string | null): string {
+  if (!iso) return 'Never synced';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const mins = String(d.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${mins}`;
+}
+
 export default function AreaScreen() {
   const router = useRouter();
   const { t, i18n } = useTranslation();
@@ -249,9 +261,7 @@ export default function AreaScreen() {
           <View style={styles.syncStatBox}>
             <Text style={styles.syncStatLabel}>LAST SYNCHRONIZED</Text>
             <Text style={styles.syncStatVal}>
-              {autoSync.lastSyncedAt
-                ? autoSync.lastSyncedAt.slice(0, 16).replace('T', ' ')
-                : 'Never synced'}
+              {formatDateTime(autoSync.lastSyncedAt)}
             </Text>
           </View>
         </View>
@@ -299,15 +309,21 @@ export default function AreaScreen() {
         <View style={styles.riskBreakdownGrid}>
           <View style={[styles.riskBox, styles.riskBoxRed]}>
             <Text style={[styles.riskBoxVal, { color: COLORS.risk.red.text }]}>{stats?.redRisk ?? 0}</Text>
-            <Text style={[styles.riskBoxLabel, { color: COLORS.risk.red.text }]}>RED ({redPct}%)</Text>
+            <Text style={[styles.riskBoxLabel, { color: COLORS.risk.red.text }]}>
+              {t('risk.red', 'අධි')} ({redPct}%)
+            </Text>
           </View>
           <View style={[styles.riskBox, styles.riskBoxYellow]}>
             <Text style={[styles.riskBoxVal, { color: COLORS.risk.yellow.text }]}>{stats?.yellowRisk ?? 0}</Text>
-            <Text style={[styles.riskBoxLabel, { color: COLORS.risk.yellow.text }]}>YELLOW ({yellowPct}%)</Text>
+            <Text style={[styles.riskBoxLabel, { color: COLORS.risk.yellow.text }]}>
+              {t('risk.yellow', 'මධ්‍යම')} ({yellowPct}%)
+            </Text>
           </View>
           <View style={[styles.riskBox, styles.riskBoxGreen]}>
             <Text style={[styles.riskBoxVal, { color: COLORS.risk.green.text }]}>{stats?.greenRisk ?? 0}</Text>
-            <Text style={[styles.riskBoxLabel, { color: COLORS.risk.green.text }]}>GREEN ({greenPct}%)</Text>
+            <Text style={[styles.riskBoxLabel, { color: COLORS.risk.green.text }]}>
+              {t('risk.green', 'අඩු')} ({greenPct}%)
+            </Text>
           </View>
         </View>
       </View>
@@ -745,9 +761,12 @@ const styles = StyleSheet.create({
   },
   riskBox: {
     flex: 1,
-    padding: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
     borderRadius: RADIUS.sm,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 70,
     borderWidth: 1,
   },
   riskBoxRed: {
@@ -856,11 +875,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   monthChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: RADIUS.full,
     backgroundColor: COLORS.surfaceSubtle,
-    marginRight: 6,
+    marginRight: 8,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   monthChipActive: {
     backgroundColor: COLORS.primary,

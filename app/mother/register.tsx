@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -155,7 +157,16 @@ export default function RegisterMotherScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: COLORS.canvas }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       {/* 1. FAMILY & DEMOGRAPHIC INFO */}
       <View style={styles.sectionCard}>
         <View style={styles.cardHeaderGroup}>
@@ -496,7 +507,8 @@ export default function RegisterMotherScreen() {
           {isSubmitting ? 'Registering...' : `✓ ${t('mother.save', 'Complete Registration')}`}
         </Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -589,6 +601,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderSubtle,
     backgroundColor: COLORS.surfaceSubtle,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
   },
   bgChipActive: {
     backgroundColor: COLORS.primary,
@@ -665,8 +679,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   stepBtn: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.surface,
     borderWidth: 1,

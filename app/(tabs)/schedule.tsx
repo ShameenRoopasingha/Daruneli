@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { COLORS, SHADOWS } from '@/src/theme';
+import { COLORS, SHADOWS, RADIUS } from '@/src/theme';
 import {
   getScheduleTemplates,
   getOverridesForRange,
@@ -781,12 +781,12 @@ function renderActionCard(
           onPress={() => {
             if (isMother) {
               if (item.pregnancyId) {
-                router.push(`/mother/visit?pregnancyId=${item.pregnancyId}`);
+                router.push(`/mother/visit/${item.pregnancyId}` as any);
               } else {
-                router.push(`/mother/${profileId}`);
+                router.push(`/mother/${profileId}` as any);
               }
             } else {
-              router.push(`/child/growth?childId=${profileId}`);
+              router.push(`/child/log-growth/${profileId}` as any);
             }
           }}
         >
@@ -885,9 +885,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   arrowBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -1032,9 +1032,11 @@ const styles = StyleSheet.create({
   },
   overrideBtn: {
     backgroundColor: '#F1F5F9',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 8,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   overrideBtnText: {
     fontSize: 11,
@@ -1301,9 +1303,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   actionBtnCall: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: RADIUS.sm,
     backgroundColor: '#DCFCE7',
     borderWidth: 1,
     borderColor: '#86EFAC',
@@ -1311,15 +1313,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionBtnCallText: {
-    fontSize: 14,
+    fontSize: 16,
   },
   actionBtnReschedule: {
     backgroundColor: '#FFFBEB',
     borderWidth: 1,
     borderColor: '#FDE68A',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   actionBtnRescheduleText: {
     fontSize: 11,
@@ -1437,11 +1441,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    width: 44,
+    height: 44,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnMoveDateText: {
-    fontSize: 12,
+    fontSize: 16,
   },
 });

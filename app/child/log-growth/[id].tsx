@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -171,7 +173,16 @@ export default function LogGrowthScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: COLORS.canvas }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       {/* 1. CHILD SUMMARY BAR */}
       {child && (
         <View style={styles.summaryBar}>
@@ -314,7 +325,8 @@ export default function LogGrowthScreen() {
           {isSubmitting ? 'Evaluating...' : `✓ ${t('child.saveGrowth', 'Save & Analyze Growth')}`}
         </Text>
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -396,8 +408,8 @@ const styles = StyleSheet.create({
   stepBtn: {
     paddingVertical: 10,
     paddingHorizontal: 14,
-    minWidth: 42,
-    minHeight: 42,
+    minWidth: 46,
+    minHeight: 46,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.surfaceSubtle,
     borderWidth: 1,

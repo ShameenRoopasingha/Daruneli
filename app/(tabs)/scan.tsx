@@ -64,12 +64,12 @@ export default function ScanScreen() {
       }
 
       Alert.alert(
-        'QR Code Not Recognized',
+        t('scan.unrecognized', 'QR කේතය හඳුනාගත නොහැක'),
         `No mother or child found with QR Token: ${cleanToken}`,
-        [{ text: 'Scan Again', onPress: () => setScanned(false) }]
+        [{ text: t('scan.again', 'නැවත ස්කෑන් කරන්න'), onPress: () => setScanned(false) }]
       );
     } catch (e: any) {
-      Alert.alert('Scan Error', e?.message || 'Failed to process QR token');
+      Alert.alert(t('common.error', 'දෝෂයකි'), e?.message || 'Failed to process QR token');
       setScanned(false);
     }
   };
@@ -121,11 +121,13 @@ export default function ScanScreen() {
             {/* Target Reticle Overlay */}
             <View style={styles.reticleOverlay}>
               <View style={styles.reticleFrame} />
-              <View style={styles.reticleHintBadge}>
-                <Text style={styles.reticleHint}>
-                  {scanned ? 'Processing QR...' : t('scan.scanning', 'Align QR Code within the frame')}
-                </Text>
-              </View>
+              {!scanned && (
+                <View style={styles.reticleHintBadge}>
+                  <Text style={styles.reticleHint}>
+                    {t('scan.scanning', 'QR කේතය රාමුව තුළ තබන්න...')}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {scanned && (
@@ -134,7 +136,9 @@ export default function ScanScreen() {
                 style={styles.rescanBtn}
                 onPress={() => setScanned(false)}
               >
-                <Text style={styles.rescanBtnText}>Tap to Scan Again</Text>
+                <Text style={styles.rescanBtnText}>
+                  {t('scan.again', 'නැවත ස්කෑන් කරන්න')}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -157,7 +161,9 @@ export default function ScanScreen() {
           </View>
         </View>
 
-        <Text style={styles.groupHeader}>MOTHERS — CLINIC CARDS</Text>
+        <Text style={styles.groupHeader}>
+          {t('scan.mothersCards', 'මව්වරුන්ගේ සායනික කාඩ්පත්')}
+        </Text>
         <View style={styles.chipsGrid}>
           {mothersList.map((m) => (
             <TouchableOpacity
@@ -187,15 +193,23 @@ export default function ScanScreen() {
                     },
                   ]}
                 />
-                <Text style={styles.chipRiskTag}>{m.risk_level || 'GREEN'}</Text>
+                <Text style={styles.chipRiskTag}>
+                  {m.risk_level === 'RED'
+                    ? t('risk.red', 'අධි')
+                    : m.risk_level === 'YELLOW'
+                    ? t('risk.yellow', 'මධ්‍යම')
+                    : t('risk.green', 'අඩු')}
+                </Text>
               </View>
-              <Text style={styles.chipTitle} numberOfLines={1}>{m.full_name}</Text>
+              <Text style={styles.chipTitle} numberOfLines={2}>{m.full_name}</Text>
               <Text style={styles.chipToken}>{m.qr_token}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text style={[styles.groupHeader, { marginTop: 18 }]}>CHILDREN — CHDR CARDS</Text>
+        <Text style={[styles.groupHeader, { marginTop: 18 }]}>
+          {t('scan.childrenCards', 'දරුවන්ගේ CHDR කාඩ්පත්')}
+        </Text>
         <View style={styles.chipsGrid}>
           {childrenList.map((c) => (
             <TouchableOpacity
@@ -225,10 +239,12 @@ export default function ScanScreen() {
                     c.growth_faltering_flag === 1 && { color: COLORS.risk.red.text },
                   ]}
                 >
-                  {c.growth_faltering_flag === 1 ? 'Faltering' : 'Normal'}
+                  {c.growth_faltering_flag === 1
+                    ? t('child.growthFaltering', 'වර්ධනය අඩාල')
+                    : t('child.normal', 'සාමාන්‍ය')}
                 </Text>
               </View>
-              <Text style={styles.chipTitle} numberOfLines={1}>{c.full_name}</Text>
+              <Text style={styles.chipTitle} numberOfLines={2}>{c.full_name}</Text>
               <Text style={styles.chipToken}>{c.qr_token}</Text>
             </TouchableOpacity>
           ))}
