@@ -211,7 +211,7 @@ export async function POST(req: NextRequest) {
       }
       authUserId = invData.user.id;
     } else {
-      const finalPassword = tempPassword || 'SuwaPHM@2026';
+      const finalPassword = tempPassword || 'DaruneliPHM@2026';
       const { data: usrData, error: usrError } = await admin.auth.admin.createUser({
         email: email.trim().toLowerCase(),
         password: finalPassword,

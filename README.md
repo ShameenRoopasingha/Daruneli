@@ -1,4 +1,4 @@
-# දරුනැළි (Darunali / Suwa) - PHM Digital Field Companion 🩺
+# දරුනැළි (Daruneli) - PHM Digital Field Companion 🩺
 
 > **Offline-First Public Health Midwife (PHM) Clinical Field Assistant & Child Health Development Record (CHDR) Application for Sri Lanka**
 

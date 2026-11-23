@@ -184,7 +184,7 @@ serve(async (req: Request) => {
         }
 
         // Compose Message (Always DD/MM/YYYY date)
-        const messageBody = `ආයුබෝවන් ${name || 'මව'}, ඔබගේ සායන/සෞඛ්‍ය පරීක්ෂාව ${displayTargetDate} දිනට නියමිතයි. කරුණාකර සායනයට පැමිණෙන්න හෝ නිවසේ රැඳී සිටින්න. - ඔබගේ PHM මහත්මිය (සුව/දරුනැළි)`;
+        const messageBody = `ආයුබෝවන් ${name || 'මව'}, ඔබගේ සායන/සෞඛ්‍ය පරීක්ෂාව ${displayTargetDate} දිනට නියමිතයි. කරුණාකර සායනයට පැමිණෙන්න හෝ නිවසේ රැඳී සිටින්න. - ඔබගේ PHM මහත්මිය (දරුනැළි)`;
 
         let providerStatus = 'SUCCESS';
         if (isDryRun) {
@@ -266,7 +266,7 @@ serve(async (req: Request) => {
         }
 
         // Compose Message (Always DD/MM/YYYY date)
-        const messageBody = `ආයුබෝවන්, ${childName || 'බබා'}ගේ ${row.vaccine_code} (${row.vaccine_name}) එන්නත ${displayTargetDate} දිනට නියමිතයි. කරුණාකර සායනික පොත රැගෙන එන්න. - ඔබගේ PHM මහත්මිය (සුව/දරුනැළි)`;
+        const messageBody = `ආයුබෝවන්, ${childName || 'බබා'}ගේ ${row.vaccine_code} (${row.vaccine_name}) එන්නත ${displayTargetDate} දිනට නියමිතයි. කරුණාකර සායනික පොත රැගෙන එන්න. - ඔබගේ PHM මහත්මිය (දරුනැළි)`;
 
         let providerStatus = 'SUCCESS';
         if (isDryRun) {

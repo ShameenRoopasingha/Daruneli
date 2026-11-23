@@ -21,7 +21,7 @@ Set required secrets in Supabase CLI:
 # Notify.lk API credentials
 supabase secrets set NOTIFY_USER_ID="your_user_id"
 supabase secrets set NOTIFY_API_KEY="your_api_key"
-supabase secrets set NOTIFY_SENDER_ID="SuwaPHM"
+supabase secrets set NOTIFY_SENDER_ID="Daruneli"
 
 # Optional: Enable Dry-Run mode to log payloads without sending actual SMS
 supabase secrets set SMS_DRY_RUN="false"

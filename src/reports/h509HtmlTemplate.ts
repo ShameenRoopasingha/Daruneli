@@ -414,7 +414,7 @@ export function renderH509Html(data: H509ReportData): string {
   </div>
 
   <div class="watermark">
-    Generated automatically via Suwa (සුව) Offline-First PHM Digital System on ${metadata.generatedAt}. Form H509 Compliant.
+    Generated automatically via Daruneli (දරුනැළි) Offline-First PHM Digital System on ${metadata.generatedAt}. Form H509 Compliant.
   </div>
 
 </body>

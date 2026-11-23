@@ -1,4 +1,4 @@
-# Daruneli / Suwa • MOH & PHNS Supervision Web Dashboard (Phase 3B)
+# Daruneli • MOH & PHNS Supervision Web Dashboard (Phase 3B)
 
 A dedicated Next.js (App Router + Tailwind CSS + Recharts + Supabase) clinical supervision portal for **Medical Officers of Health (MOH)** and **Public Health Nursing Sisters (PHNS)** in Sri Lanka.
 

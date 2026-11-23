@@ -110,7 +110,7 @@ export async function canAuthenticateWithBiometrics(): Promise<boolean> {
 }
 
 export async function authenticateWithBiometrics(
-  promptMessage = 'Verify your identity to unlock Suwa PHM'
+  promptMessage = 'Verify your identity to unlock Daruneli PHM'
 ): Promise<boolean> {
   try {
     const supported = await canAuthenticateWithBiometrics();

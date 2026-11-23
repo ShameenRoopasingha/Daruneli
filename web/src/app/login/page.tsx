@@ -59,7 +59,7 @@ export default function LoginPage() {
 
       if (profile?.role === 'PHM') {
         setErrorMsg(
-          'Access Restricted: The Web Supervision Portal is reserved for PHNS and MOH supervisor officers. Field midwives should use the Suwa Mobile App.'
+          'Access Restricted: The Web Supervision Portal is reserved for PHNS and MOH supervisor officers. Field midwives should use the Daruneli Mobile App.'
         );
         await supabase.auth.signOut();
         return;
@@ -82,7 +82,7 @@ export default function LoginPage() {
             <Stethoscope className="w-8 h-8" />
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-            Suwa • MOH Portal
+            Daruneli • MOH Portal
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium">
             Maternal & Child Health Supervision System

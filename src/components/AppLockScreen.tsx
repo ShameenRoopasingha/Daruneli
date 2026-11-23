@@ -35,7 +35,7 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({ onUnlocked }) => {
       setBiometricsAvailable(available);
 
       if (available) {
-        const success = await authenticateWithBiometrics('Use biometric identity to unlock Suwa PHM');
+        const success = await authenticateWithBiometrics('Use biometric identity to unlock Daruneli PHM');
         if (success && isMounted) {
           onUnlocked();
         }
@@ -91,7 +91,7 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({ onUnlocked }) => {
           <Text style={styles.shieldIcon}>🛡️</Text>
         </View>
         <Text style={styles.appTitle}>දරුනැළි • ආරක්ෂිත පිවිසුම</Text>
-        <Text style={styles.subtitle}>Suwa PHM Companion • Security Lock</Text>
+        <Text style={styles.subtitle}>Daruneli PHM Companion • Security Lock</Text>
       </View>
 
       {/* 4-Digit PIN Indicator Dots */}

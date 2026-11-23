@@ -22,7 +22,7 @@ interface ResetPasswordModalProps {
 
 function generateSecurePassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%&*';
-  let res = 'Suwa#';
+  let res = 'Daruneli#';
   for (let i = 0; i < 6; i++) {
     res += chars.charAt(Math.floor(Math.random() * chars.length));
   }

@@ -102,7 +102,7 @@ export default function AreasDirectoryPage() {
         body: JSON.stringify({
           fullName: phmName,
           email: phmEmail,
-          password: phmPassword || 'SuwaPHM@2026',
+          password: phmPassword || 'DaruneliPHM@2026',
           phmAreaId: selectedAreaForInvite,
         }),
       });
@@ -431,7 +431,7 @@ export default function AreasDirectoryPage() {
                 </label>
                 <input
                   type="password"
-                  placeholder="Leave empty for default (SuwaPHM@2026)"
+                  placeholder="Leave empty for default (DaruneliPHM@2026)"
                   value={phmPassword}
                   onChange={(e) => setPhmPassword(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"

@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "දරුනැළි",
-    "slug": "Suwa",
+    "slug": "Daruneli",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "suwa",
+    "scheme": "daruneli",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true
