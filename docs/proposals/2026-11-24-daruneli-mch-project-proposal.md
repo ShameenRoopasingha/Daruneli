@@ -3,10 +3,11 @@
 
 | ක්ෂේත්‍රය (Field) | විස්තර (Details) |
 | :--- | :--- |
-| **ඉදිරිපත් කරන්නේ (Prepared For)** | සෞඛ්‍ය අමාත්‍යාංශය (Ministry of Health) / පවුල් සෞඛ්‍ය කාර්යාංශය (Family Health Bureau - FHB) / සෞඛ්‍ය වෛද්‍ය නිලධාරී (MOH) කාර්යාල |
+| **ඉදිරිපත් කරන්නේ (Prepared For)** | සෞඛ්‍ය අමාත්‍යාංශය (Ministry of Health) / පවුල් සෞඛ්‍ය කාර්යාංශය (Family Health Bureau - FHB) / හම්බන්තොට ප්‍රාදේශීය සෞඛ්‍ය සේවා අධ්‍යක්ෂ කාර්යාලය (RDHS Hambantota) |
+| **යෝජිත නියමු කලාපය (Pilot Region)** | **වලස්මුල්ල සෞඛ්‍ය වෛද්‍ය නිලධාරී (MOH) කොට්ඨාසය සහ වලස්මුල්ල මූලික රෝහල් කලාපය (Walasmulla MOH & Base Hospital Area)** |
 | **ඉදිරිපත් කළේ (Prepared By)** | බිට්ගාඩ් පුද්ගලික සමාගම (Bitgard Pvt Ltd) — ඩිජිටල් සෞඛ්‍ය විසඳුම් අංශය |
 | **දිනය (Date)** | 2026-11-24 |
-| **ලේඛන අනුවාදය (Version)** | 1.0 (විධායක යෝජනාවලිය / Executive Technical Proposal) |
+| **ලේඛන අනුවාදය (Version)** | 1.1 (නියමු ව්‍යාපෘති යෝජනාවලිය — වලස්මුල්ල කලාපය / Walasmulla Pilot Edition) |
 | **තත්ත්වය (Status)** | Proposed |
 
 ---
@@ -15,7 +16,9 @@
 
 ශ්‍රී ලංකාවේ ප්‍රශංසනීය ප්‍රාථමික සෞඛ්‍ය සේවා ජාලය තවදුරටත් ශක්තිමත් කරමින්, පවුල් සෞඛ්‍ය සේවා නිලධාරිනියන් (PHM) සහ සෞඛ්‍ය වෛද්‍ය නිලධාරී (MOH) කාර්යාල මුහුණ දෙන සාම්ප්‍රදායික කඩදාසි ලේඛන (H512 මාතෘ වාර්තාව, H544 ළමා සංවර්ධන වාර්තාව - CHDR, H509 ලේඛන) ආශ්‍රිත ප්‍රමාදයන්, දත්ත අස්ථානගතවීම් සහ ග්‍රාමීය සන්නිවේදන බාධාවන් නිරාකරණය කිරීම සඳහා **"දරුනැලි (Daruneli)"** ජාතික ඩිජිටල් වේදිකාව යෝජනා කරනු ලැබේ.
 
-මෙම පද්ධතිය 100% නොබැඳිව ක්‍රියාත්මක විය හැකි (Offline-First) ක්ෂේත්‍ර ජංගම යෙදුමකින් (React Native Expo + SQLite), තත්‍ය කාලීන MOH සායනික හා පරිපාලන උපකරණ පුවරුවකින් (Next.js 14 + PostgreSQL + Prisma ORM) සහ මව්වරුන් සවිබලගන්වන PWA වෙබ් ද්වාරයකින් (Mother Companion Portal) සමන්විත වේ. මාතෘ අධි අවදානම් (Red/Yellow risk tiers) සහ ළමා මන්දපෝෂණ තත්ත්වයන් කල්තියා හඳුනාගැනීම, ඩිජිටල් සායනික QR හැඳුනුම්පත් (Digital Clinic Pass) මගින් සායනික පොත් අස්ථානගතවීම වැළැක්වීම සහ දැඩි දත්ත ආරක්ෂණ ක්‍රමවේද (Zod validations & HMAC security) මෙමගින් තහවුරු කෙරේ. සති 12 ක කාලරාමුවකින් යුතු නියමු ව්‍යාපෘතිය (Pilot Deployment) සෞඛ්‍ය බලධාරීන්ගේ අනුමැතිය සඳහා මෙයින් ඉදිරිපත් කෙරේ.
+මෙම පද්ධතිය 100% නොබැඳිව ක්‍රියාත්මක විය හැකි (Offline-First) ක්ෂේත්‍ර ජංගම යෙදුමකින් (React Native Expo + SQLite), තත්‍ය කාලීන MOH සායනික හා පරිපාලන උපකරණ පුවරුවකින් (Next.js 14 + PostgreSQL + Prisma ORM) සහ මව්වරුන් සවිබලගන්වන PWA වෙබ් ද්වාරයකින් (Mother Companion Portal) සමන්විත වේ. මාතෘ අධි අවදානම් (Red/Yellow risk tiers) සහ ළමා මන්දපෝෂණ තත්ත්වයන් කල්තියා හඳුනාගැනීම, ඩිජිටල් සායනික QR හැඳුනුම්පත් (Digital Clinic Pass) මගින් සායනික පොත් අස්ථානගතවීම වැළැක්වීම සහ දැඩි දත්ත ආරක්ෂණ ක්‍රමවේද (Zod validations & HMAC security) මෙමගින් තහවුරු කෙරේ.
+
+මෙම ව්‍යාපෘතියේ ප්‍රථම නියමු අදියර (Phase 5 Pilot Deployment) **හම්බන්තොට දිස්ත්‍රික්කයේ වලස්මුල්ල සෞඛ්‍ය වෛද්‍ය නිලධාරී (MOH) කොට්ඨාසය සහ වලස්මුල්ල මූලික රෝහල් කලාපය (Walasmulla Base Hospital Area)** කේන්ද්‍ර කරගනිමින් සති 12 ක සැලැස්මක් යටතේ ක්‍රියාත්මක කිරීමට යෝජිත අතර, සෞඛ්‍ය බලධාරීන්ගේ නිල අනුමැතිය සඳහා මෙම විධායක ලේඛනය මෙයින් ඉදිරිපත් කෙරේ.
 
 ---
 
@@ -125,7 +128,7 @@ flowchart TB
 2. **MOH පරිපාලන වෙබ් පද්ධතිය:** MOH කොට්ඨාස කළමනාකරණය, නිලධාරී පරිශීලක පාලනය (RBAC), අවදානම් අධීක්ෂණය, මාරුවීම් සහ සංඛ්‍යාලේඛන වාර්තා.
 3. **Mother Companion Portal:** රහස්‍ය PIN පිවිසුම, ගර්භණී සති ප්‍රගතිය, සායන දින දර්ශනය, Cardiff චලන සටහන සහ ඩිජිටල් QR සායනික කාඩ්පත.
 4. **දත්ත සමුදාය සහ ආරක්ෂණ යටිතල පහසුකම්:** Supabase PostgreSQL සැකසුම, Prisma ORM ඒකාබද්ධතාවය, Zod validation, සහ Offline Sync ගෘහ නිර්මාණය.
-5. **පරිශීලක පුහුණුව සහ ලියකියවිලි:** PHM නිලධාරිනියන්, SPHM සහ MOH වෛද්‍යවරුන් සඳහා පුහුණු අත්පොත් සහ වීඩියෝ මගපෙන්වීම්.
+5. **වලස්මුල්ල නියමු යෙදවීම සහ පරිශීලක පුහුණුව:** වලස්මුල්ල සෞඛ්‍ය වෛද්‍ය නිලධාරී (MOH) කාර්යාලය, වලස්මුල්ල මූලික රෝහලේ මාතෘ සායන ඒකකය සහ වලස්මුල්ල බලප්‍රදේශයේ PHM නිලධාරිනියන් සඳහා සජීවී පද්ධති ස්ථාපනය, පුහුණු අත්පොත් සහ ක්ෂේත්‍ර නියමු අධීක්ෂණය.
 
 ### බැහැර කර ඇති අංග (Out of Scope)
 1. රෝහල් අභ්‍යන්තර නේවාසික වාට්ටු කළමනාකරණය (In-patient hospital ward management).
@@ -156,8 +159,8 @@ gantt
     Zod API Hardening & Prisma ORM Migration    :p4_1, after p2_2, 7d
     HMAC Session Security & Penetration Testing :p4_2, after p4_1, 7d
     section Phase 5: නියමු යෙදවීම සහ ක්ෂේත්‍ර පුහුණුව
-    MOH නියමු යෙදවීම (MOH Pilot Rollout)        :p5_1, after p4_2, 7d
-    PHM ක්ෂේත්‍ර පුහුණුව & පද්ධති භාරදීම          :p5_2, after p5_1, 7d
+    වලස්මුල්ල MOH නියමු යෙදවීම (Walasmulla Pilot)  :p5_1, after p4_2, 7d
+    වලස්මුල්ල PHM ක්ෂේත්‍ර පුහුණුව & පද්ධති භාරදීම   :p5_2, after p5_1, 7d
 ```
 
 | අදියර (Phase) | ප්‍රධාන ප්‍රතිදානයන් (Key Deliverables) | වගකිවයුතු භූමිකාව (Owner / Role) | ආරම්භය (Start) | ඉලක්කගත දිනය (Target) |
@@ -166,7 +169,7 @@ gantt
 | **Phase 2: ජංගම යෙදුම සහ නොබැඳි පදනම (Core Mobile & Offline Build)** | React Native Expo Mobile App, Local SQLite schema, Offline-first sync engine. | Lead Mobile Engineer | Week 3 | Week 5 |
 | **Phase 3: MOH Dashboard සහ Mother PWA සංවර්ධනය** | Next.js 14 Web Dashboard, Mother Companion PWA, Digital QR Pass Generator. | Fullstack Web Engineer | Week 6 | Week 8 |
 | **Phase 4: ආරක්ෂාව, වලංගුකරණය සහ විගණනය** | Zod API hardening, Prisma ORM migration, HMAC security, E2E Testing. | QA & Security Engineer | Week 9 | Week 10 |
-| **Phase 5: නියමු ක්ෂේත්‍ර යෙදවීම සහ පුහුණුව (Pilot & Training)** | තෝරාගත් MOH කොට්ඨාසයක නියමු යෙදවීම, PHM නිලධාරිනී පුහුණු වැඩමුළු, පරිශීලක ප්‍රතිපෝෂණ. | Project Manager & Implementation Lead | Week 11 | Week 12 |
+| **Phase 5: නියමු ක්ෂේත්‍ර යෙදවීම සහ පුහුණුව (Walasmulla Pilot)** | වලස්මුල්ල MOH කොට්ඨාසය සහ වලස්මුල්ල මූලික රෝහල ආශ්‍රිත සජීවී නියමු යෙදවීම, වලස්මුල්ල PHM නිලධාරිනී පුහුණු වැඩමුළු, පරිශීලක ප්‍රතිපෝෂණ විගණනය. | Project Manager & Implementation Lead | Week 11 | Week 12 |
 
 ---
 
@@ -176,7 +179,7 @@ gantt
 | :--- | :--- | :---: | :---: |
 | **මෘදුකාංග ඉංජිනේරු ශ්‍රමය (Engineering & Core Development)** | Mobile (Expo/React Native), Web (Next.js), Data Engine (Prisma/PostgreSQL), Security & Testing | සති 12 (ඉංජිනේරුවන් 5 දෙනෙකුගෙන් යුත් කණ්ඩායම) | රු. 3,850,000 |
 | **වලාකුළු යටිතල පහසුකම් (Cloud & Security Infrastructure)** | Supabase Managed PostgreSQL, Cloud Hosting, SSL, Backup & Storage (පළමු වසර සඳහා) | මාස 12 ක සත්කාරකත්වය | රු. 480,000 |
-| **නියමු ක්ෂේත්‍ර පුහුණුව සහ සම්පත් (Pilot Deployment & Training)** | PHM නිලධාරිනියන් 50 දෙනෙකු සහ MOH කාර්ය මණ්ඩලය සඳහා මුද්‍රිත අත්පොත්, පුහුණු සැසි | MOH කොට්ඨාස 1 ක් (නියමු) | රු. 350,000 |
+| **නියමු ක්ෂේත්‍ර පුහුණුව සහ සම්පත් (Walasmulla Pilot & Training)** | වලස්මුල්ල MOH කොට්ඨාසයේ PHM නිලධාරිනියන් සහ වලස්මුල්ල මූලික රෝහලේ සායනික කාර්ය මණ්ඩලය සඳහා මුද්‍රිත අත්පොත්, පුහුණු සැසි | වලස්මුල්ල MOH බලප්‍රදේශය (නියමු) | රු. 350,000 |
 | **තාක්ෂණික සහාය සහ නඩත්තුව (Year 1 Support & SLA)** | දෝෂ නිවැරදි කිරීම් (Bug fixes), OS updates ගැළපුම, 24/7 හදිසි තාක්ෂණික සහාය | මාස 12 | රු. 720,000 |
 | **මුළු ඇස්තමේන්තුව (Total Proposed Investment)** | | | **රු. 5,400,000** |
 
