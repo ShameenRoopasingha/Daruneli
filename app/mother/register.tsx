@@ -31,6 +31,27 @@ const CHRONIC_OPTIONS: ChipOption[] = [
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const GN_DIVISIONS = ['Kottawa North', 'Kottawa South', 'Maharagama East', 'Maharagama West'];
 
+function toDmy(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
+function parseDmyToIso(str: string): { iso: string; date: Date } {
+  const trimmed = str.trim();
+  const dmyMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    const iso = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+    return { iso, date };
+  }
+  const date = new Date(trimmed);
+  const iso = isNaN(date.getTime()) ? trimmed : date.toISOString().split('T')[0];
+  return { iso, date };
+}
+
 export default function RegisterMotherScreen() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -73,7 +94,7 @@ export default function RegisterMotherScreen() {
   // Mother Info
   const [fullName, setFullName] = useState('');
   const [nic, setNic] = useState('');
-  const [dob, setDob] = useState('1995-01-01');
+  const [dob, setDob] = useState('01/01/1995');
   const [phone, setPhone] = useState('');
   const [bloodGroup, setBloodGroup] = useState('A+');
   const [chronicConditions, setChronicConditions] = useState<string[]>([]);
@@ -90,7 +111,7 @@ export default function RegisterMotherScreen() {
   const [lrmpDate, setLrmpDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 70); // default ~10 weeks
-    return d.toISOString().split('T')[0];
+    return toDmy(d);
   });
   const [gravida, setGravida] = useState(1);
   const [para, setPara] = useState(0);
@@ -118,12 +139,15 @@ export default function RegisterMotherScreen() {
         gps_lng: gpsLng,
       });
 
+      const { iso: dobIso, date: birthDate } = parseDmyToIso(dob);
+      const { iso: lrmpIso, date: lrmpDateObj } = parseDmyToIso(lrmpDate);
+
       // 2. Create Mother record
       const motherId = await createMother({
         family_id: familyId,
         full_name: fullName.trim(),
         nic: nic.trim(),
-        dob: dob.trim(),
+        dob: dobIso,
         phone: phone.trim(),
         blood_group: bloodGroup,
         chronic_conditions: chronicConditions,
@@ -136,12 +160,10 @@ export default function RegisterMotherScreen() {
 
       // 3. If currently pregnant, create Pregnancy record with clinical risk scoring
       if (isPregnant) {
-        const lrmp = new Date(lrmpDate);
-        const edd = calculateEDD(lrmp);
+        const edd = calculateEDD(lrmpDateObj);
         const eddStr = edd.toISOString().split('T')[0];
 
         // Compute maternal age
-        const birthDate = new Date(dob);
         const maternalAge = Math.floor(
           (Date.now() - birthDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
         );
@@ -162,7 +184,7 @@ export default function RegisterMotherScreen() {
           mother_id: motherId,
           gravida,
           para,
-          lrmp_date: lrmpDate,
+          lrmp_date: lrmpIso,
           edd_date: eddStr,
           is_precious_pregnancy: isFertilityTreatment || prevMiscarriages >= 2,
           risk_level: riskResult.level,
@@ -322,10 +344,10 @@ export default function RegisterMotherScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>{t('mother.dob', 'Date of Birth (YYYY-MM-DD)')}</Text>
+          <Text style={styles.label}>{t('mother.dob', 'Date of Birth (DD/MM/YYYY)')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="YYYY-MM-DD"
+            placeholder="DD/MM/YYYY"
             placeholderTextColor={COLORS.textTertiary}
             value={dob}
             onChangeText={setDob}
@@ -537,11 +559,11 @@ export default function RegisterMotherScreen() {
           <View style={{ marginTop: 10 }}>
             <View style={styles.formGroup}>
               <Text style={styles.label}>
-                {t('mother.lrmpDate', 'LRMP Date (Last Menstrual Period)')} *
+                {t('mother.lrmpDate', 'LRMP Date (Last Menstrual Period)')} (DD/MM/YYYY) *
               </Text>
               <TextInput
                 style={styles.input}
-                placeholder="YYYY-MM-DD"
+                placeholder="DD/MM/YYYY"
                 placeholderTextColor={COLORS.textTertiary}
                 value={lrmpDate}
                 onChangeText={setLrmpDate}

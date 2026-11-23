@@ -23,6 +23,27 @@ interface DeliveryModalProps {
   onSuccess: (newChildId: string) => void;
 }
 
+function toDmy(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
+function parseDmyToIso(str: string): { iso: string; date: Date } {
+  const trimmed = str.trim();
+  const dmyMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    const iso = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    const date = new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10));
+    return { iso, date };
+  }
+  const date = new Date(trimmed);
+  const iso = isNaN(date.getTime()) ? trimmed : date.toISOString().split('T')[0];
+  return { iso, date };
+}
+
 export const DeliveryModal: React.FC<DeliveryModalProps> = ({
   visible,
   pregnancyId,
@@ -33,9 +54,8 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const isSi = i18n.language === 'si';
-  const todayStr = new Date().toISOString().split('T')[0];
 
-  const [deliveryDate, setDeliveryDate] = useState(todayStr);
+  const [deliveryDate, setDeliveryDate] = useState(() => toDmy(new Date()));
   const [deliveryMode, setDeliveryMode] = useState<'VAGINAL' | 'CS' | 'INSTRUMENTAL'>('VAGINAL');
   const [babyName, setBabyName] = useState('');
   const [gender, setGender] = useState<'M' | 'F'>('F');
@@ -70,22 +90,22 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
           onPress: async () => {
             try {
               setIsSubmitting(true);
+              const { iso: deliveryIso, date: dobDate } = parseDmyToIso(deliveryDate);
 
               // 1. Mark pregnancy as DELIVERED
-              await markDelivered(pregnancyId, deliveryDate, deliveryMode);
+              await markDelivered(pregnancyId, deliveryIso, deliveryMode);
 
               // 2. Create linked child
               const childId = await createChild({
                 mother_id: motherId,
                 pregnancy_id: pregnancyId,
                 full_name: babyName.trim(),
-                dob: deliveryDate,
+                dob: deliveryIso,
                 gender: gender,
                 birth_weight_kg: weightNum,
               });
 
               // 3. Auto-generate full EPI schedule
-              const dobDate = new Date(deliveryDate);
               const schedule = generateEPISchedule(dobDate);
 
               for (const item of schedule) {
@@ -145,12 +165,12 @@ export const DeliveryModal: React.FC<DeliveryModalProps> = ({
 
             {/* Delivery Date */}
             <View style={styles.formGroup}>
-              <Text style={styles.label}>{t('mother.deliveryDate', 'Delivery Date (YYYY-MM-DD)')}</Text>
+              <Text style={styles.label}>{t('mother.deliveryDate', 'Delivery Date (DD/MM/YYYY)')}</Text>
               <TextInput
                 style={styles.input}
                 value={deliveryDate}
                 onChangeText={setDeliveryDate}
-                placeholder="YYYY-MM-DD"
+                placeholder="DD/MM/YYYY"
               />
             </View>
 

@@ -35,7 +35,7 @@ import {
 import { setAppLanguage } from '@/src/i18n';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 import { PhmWallCharts } from '@/src/components/charts';
-import { PinSetupModal } from '@/src/components';
+import { PinSetupModal } from '@/src/components/PinSetupModal';
 
 const MONTH_OPTIONS = [
   { month: 1, label: 'Jan' },

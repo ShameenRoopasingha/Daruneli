@@ -7,9 +7,21 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system/legacy';
 import { RADIUS } from '@/src/theme';
+
+// Safely load expo-av to gracefully handle environments without ExponentAV native binary
+let AudioModule: any = null;
+let isAudioAvailable = false;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const expoAv = require('expo-av');
+  AudioModule = expoAv?.Audio ?? null;
+  isAudioAvailable = Boolean(AudioModule);
+} catch {
+  AudioModule = null;
+  isAudioAvailable = false;
+}
 
 interface VoiceNoteRecorderProps {
   onRecorded: (uri: string, durationSec: number) => void;
@@ -24,13 +36,13 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
   existingUri,
   existingDurationSec,
 }) => {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<any | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [durationSec, setDurationSec] = useState<number>(existingDurationSec || 0);
   const [recordedUri, setRecordedUri] = useState<string | null>(existingUri || null);
 
   // Sound playback state
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<any | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,8 +58,13 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
   }, [sound]);
 
   const startRecording = async () => {
+    if (!isAudioAvailable || !AudioModule) {
+      Alert.alert('Notice', 'Voice recording requires a development build with audio module enabled.');
+      return;
+    }
+
     try {
-      const perm = await Audio.requestPermissionsAsync();
+      const perm = await AudioModule.requestPermissionsAsync();
       if (!perm.granted) {
         Alert.alert(
           'Microphone Permission Required',
@@ -56,13 +73,13 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
         return;
       }
 
-      await Audio.setAudioModeAsync({
+      await AudioModule.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
 
-      const newRecording = new Audio.Recording();
-      await newRecording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      const newRecording = new AudioModule.Recording();
+      await newRecording.prepareToRecordAsync(AudioModule.RecordingOptionsPresets.HIGH_QUALITY);
       await newRecording.startAsync();
 
       setRecording(newRecording);
@@ -120,7 +137,7 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
   };
 
   const handlePlayPreview = async () => {
-    if (!recordedUri) return;
+    if (!recordedUri || !isAudioAvailable || !AudioModule) return;
 
     try {
       if (sound) {
@@ -136,12 +153,12 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
       }
 
       setIsLoading(true);
-      await Audio.setAudioModeAsync({
+      await AudioModule.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
       });
 
-      const { sound: newSound } = await Audio.Sound.createAsync(
+      const { sound: newSound } = await AudioModule.Sound.createAsync(
         { uri: recordedUri },
         { shouldPlay: true }
       );
@@ -150,7 +167,7 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
       setIsPlaying(true);
       setIsLoading(false);
 
-      newSound.setOnPlaybackStatusUpdate((status) => {
+      newSound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.isLoaded && status.didJustFinish) {
           setIsPlaying(false);
         }
@@ -184,6 +201,24 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
       },
     ]);
   };
+
+  if (!isAudioAvailable) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.headerRow}>
+          <View style={styles.titleWithIcon}>
+            <Text style={styles.micIcon}>🎙️</Text>
+            <Text style={styles.titleText}>Offline Voice Note (හඬ සටහන)</Text>
+          </View>
+        </View>
+        <View style={styles.unavailableBox}>
+          <Text style={styles.unavailableText}>
+            Audio recording module requires an app update or development build. Text clinical notes remain fully active.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -252,7 +287,7 @@ export const InlineVoicePlayer: React.FC<{ uri: string; durationSec?: number | n
   uri,
   durationSec,
 }) => {
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [sound, setSound] = useState<any | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
@@ -262,6 +297,17 @@ export const InlineVoicePlayer: React.FC<{ uri: string; durationSec?: number | n
       }
     };
   }, [sound]);
+
+  if (!isAudioAvailable || !AudioModule) {
+    return (
+      <View style={[styles.pillContainer, { opacity: 0.7 }]}>
+        <Text style={styles.pillIcon}>🎙️</Text>
+        <Text style={styles.pillText}>
+          Audio Note {durationSec ? `(${durationSec}s)` : ''}
+        </Text>
+      </View>
+    );
+  }
 
   const togglePlay = async () => {
     try {
@@ -277,16 +323,16 @@ export const InlineVoicePlayer: React.FC<{ uri: string; durationSec?: number | n
         }
       }
 
-      await Audio.setAudioModeAsync({
+      await AudioModule.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
       });
 
-      const { sound: newSound } = await Audio.Sound.createAsync({ uri }, { shouldPlay: true });
+      const { sound: newSound } = await AudioModule.Sound.createAsync({ uri }, { shouldPlay: true });
       setSound(newSound);
       setIsPlaying(true);
 
-      newSound.setOnPlaybackStatusUpdate((status) => {
+      newSound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.isLoaded && status.didJustFinish) {
           setIsPlaying(false);
         }
@@ -315,6 +361,17 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     marginTop: 10,
     marginBottom: 6,
+  },
+  unavailableBox: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: RADIUS.sm,
+    padding: 10,
+    marginTop: 8,
+  },
+  unavailableText: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 18,
   },
   headerRow: {
     flexDirection: 'row',

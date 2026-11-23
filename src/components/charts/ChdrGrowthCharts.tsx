@@ -382,11 +382,15 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
           const isLatest = i === patientPoints.length - 1;
           const isSelected = selectedRecord?.recorded_date === pt.record.recorded_date;
 
-          // Collision Detection: don't render overlapping text labels if points are < 36px apart
+          // Anti-Collision & Staggered Positioning
           const prevPt = i > 0 ? patientPoints[i - 1] : null;
           const prevCx = prevPt ? getX(prevPt.x) : -999;
-          const isTooClose = Math.abs(cx - prevCx) < 36;
-          const shouldShowLabel = !isTooClose || isSelected || isLatest;
+          const isTooClose = Math.abs(cx - prevCx) < 42;
+          // Alternate top/bottom if close to previous point to prevent horizontal collision
+          const isBelow = isTooClose && (i % 2 === 1);
+          const rectY = isBelow ? cy + 9 : cy - 23;
+          const textY = isBelow ? cy + 20 : cy - 12;
+          const shouldShowLabel = !isTooClose || isSelected || isLatest || Math.abs(cx - prevCx) >= 20;
 
           return (
             <G
@@ -417,9 +421,9 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
               {shouldShowLabel && (
                 <G>
                   <Rect
-                    x={cx - 18}
-                    y={cy - 22}
-                    width={36}
+                    x={cx - 19}
+                    y={rectY}
+                    width={38}
                     height={15}
                     rx={4}
                     fill="#FFFFFF"
@@ -428,7 +432,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
                   />
                   <SvgText
                     x={cx}
-                    y={cy - 11}
+                    y={textY}
                     fontSize={9.5}
                     fontWeight="800"
                     fill={isSelected ? themeColor : '#0F172A'}
@@ -451,7 +455,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
         style={[styles.tabBtn, activeTab === 'WFA' && styles.tabBtnActive]}
         onPress={() => setActiveTab('WFA')}
       >
-        <Text style={[styles.tabBtnText, activeTab === 'WFA' && styles.tabBtnTextActive]}>
+        <Text style={[styles.tabBtnText, activeTab === 'WFA' && styles.tabBtnTextActive]} numberOfLines={1}>
           WFA (බර/වයස)
         </Text>
       </TouchableOpacity>
@@ -459,7 +463,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
         style={[styles.tabBtn, activeTab === 'HFA' && styles.tabBtnActive]}
         onPress={() => setActiveTab('HFA')}
       >
-        <Text style={[styles.tabBtnText, activeTab === 'HFA' && styles.tabBtnTextActive]}>
+        <Text style={[styles.tabBtnText, activeTab === 'HFA' && styles.tabBtnTextActive]} numberOfLines={1}>
           HFA (උස/වයස)
         </Text>
       </TouchableOpacity>
@@ -467,7 +471,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
         style={[styles.tabBtn, activeTab === 'WFH' && styles.tabBtnActive]}
         onPress={() => setActiveTab('WFH')}
       >
-        <Text style={[styles.tabBtnText, activeTab === 'WFH' && styles.tabBtnTextActive]}>
+        <Text style={[styles.tabBtnText, activeTab === 'WFH' && styles.tabBtnTextActive]} numberOfLines={1}>
           WFH (බර/උස)
         </Text>
       </TouchableOpacity>

@@ -230,8 +230,11 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
 
           const prevV = idx > 0 ? validVisits[idx - 1] : null;
           const prevCx = prevV ? getX(prevV.poaWeeks!) : -999;
-          const isTooClose = Math.abs(cx - prevCx) < 36;
-          const shouldShowLabel = !isTooClose || isSelected || isLatest;
+          const isTooClose = Math.abs(cx - prevCx) < 42;
+          const isBelow = isTooClose && (idx % 2 === 1);
+          const rectY = isBelow ? cy + 9 : cy - 23;
+          const textY = isBelow ? cy + 20 : cy - 12;
+          const shouldShowLabel = !isTooClose || isSelected || isLatest || Math.abs(cx - prevCx) >= 20;
 
           return (
             <G
@@ -257,9 +260,9 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
               {shouldShowLabel && (
                 <G>
                   <Rect
-                    x={cx - 18}
-                    y={cy - 22}
-                    width={36}
+                    x={cx - 19}
+                    y={rectY}
+                    width={38}
                     height={15}
                     rx={4}
                     fill="#FFFFFF"
@@ -268,7 +271,7 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
                   />
                   <SvgText
                     x={cx}
-                    y={cy - 11}
+                    y={textY}
                     fontSize={9.5}
                     fontWeight="800"
                     fill={isSelected ? '#1D4ED8' : '#0F172A'}
