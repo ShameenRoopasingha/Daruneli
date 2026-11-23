@@ -21,12 +21,15 @@ export interface ChartZoomModalProps {
   baseWidth?: number;
   baseHeight?: number;
   initialScale?: number;
-  renderChart: (scale: number, chartWidth: number, chartHeight: number) => React.ReactNode;
+  renderChart?: (scale: number, chartWidth: number, chartHeight: number) => React.ReactNode;
+  renderPlot?: (scale: number, plotWidth: number, chartHeight: number) => React.ReactNode;
+  renderYAxis?: (chartHeight: number) => React.ReactNode;
+  yAxisWidth?: number;
   legend?: React.ReactNode;
   extraContent?: React.ReactNode;
 }
 
-const ZOOM_STEPS = [1.0, 1.5, 2.0, 2.5, 3.0];
+const ZOOM_STEPS = [1.0, 1.5, 2.0, 3.0];
 
 export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
   visible,
@@ -35,9 +38,12 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
   subtitle,
   badgeText = 'FHB Standard',
   baseWidth: customBaseWidth,
-  baseHeight = 280,
+  baseHeight = 340,
   initialScale = 1.5,
   renderChart,
+  renderPlot,
+  renderYAxis,
+  yAxisWidth = 44,
   legend,
   extraContent,
 }) => {
@@ -46,10 +52,15 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
   const verticalScrollRef = useRef<any>(null);
 
   const screenWidth = Dimensions.get('window').width;
-  const baseWidth = customBaseWidth || Math.max(320, screenWidth - 32);
+  const baseWidth = customBaseWidth || Math.max(320, screenWidth - 28);
 
-  const chartWidth = Math.round(baseWidth * scale);
-  const chartHeight = Math.round(baseHeight * (1 + (scale - 1) * 0.45));
+  const chartHeight = Math.round(baseHeight * (1 + (scale - 1) * 0.35));
+  const hasStickyAxis = typeof renderYAxis === 'function' && typeof renderPlot === 'function';
+
+  // If sticky Y-axis is active, plot width expands from (baseWidth - yAxisWidth)
+  const plotWidth = hasStickyAxis
+    ? Math.round((baseWidth - yAxisWidth) * scale)
+    : Math.round(baseWidth * scale);
 
   const handleZoomIn = () => {
     const nextIdx = ZOOM_STEPS.findIndex((s) => s > scale);
@@ -90,7 +101,9 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
               </Text>
               {badgeText ? (
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{badgeText}</Text>
+                  <Text style={styles.badgeText} numberOfLines={1}>
+                    {badgeText}
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -104,16 +117,16 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
           <TouchableOpacity
             style={styles.closeBtn}
             onPress={onClose}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityLabel="Close expanded chart"
           >
-            <Text style={styles.closeBtnText}>✕ වසන්න</Text>
+            <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Zoom Controls Toolbar */}
+        {/* Compact, Non-clipping Zoom Controls Toolbar */}
         <View style={styles.toolbar}>
-          <View style={styles.scaleSteppers}>
+          <View style={styles.zoomGroup}>
             <TouchableOpacity
               style={[styles.stepBtn, scale <= ZOOM_STEPS[0] && styles.stepBtnDisabled]}
               onPress={handleZoomOut}
@@ -170,7 +183,7 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
         {/* User Navigation Hint */}
         <View style={styles.hintBar}>
           <Text style={styles.hintText}>
-            💡 විශාලනය: <Text style={{ fontWeight: '800' }}>{scale}x</Text> • ප්‍රස්ථාරය හරහා බැලීමට වමට/දකුණට සහ ඉහළ/පහළට අනුචලනය කරන්න (Pan & Scroll)
+            💡 විශාලනය: <Text style={{ fontWeight: '800' }}>{scale}x</Text> • ප්‍රස්ථාරය හරහා බැලීමට වමට/දකුණට අනුචලනය කරන්න (Pan) • ලකුණු මත තට්ටු කර විස්තර බලන්න
           </Text>
         </View>
 
@@ -181,21 +194,44 @@ export const ChartZoomModal: React.FC<ChartZoomModalProps> = ({
           contentContainerStyle={styles.verticalContent}
           showsVerticalScrollIndicator={true}
         >
-          {/* Chart Canvas Card with Horizontal Pan */}
+          {/* Chart Canvas Card with Sticky Y-Axis or Standard Horizontal Pan */}
           <View style={styles.chartCard}>
-            <ScrollView
-              ref={horizontalScrollRef}
-              horizontal={true}
-              showsHorizontalScrollIndicator={true}
-              nestedScrollEnabled={true}
-              contentContainerStyle={{
-                minWidth: chartWidth,
-                paddingHorizontal: 8,
-                paddingVertical: 12,
-              }}
-            >
-              {renderChart(scale, chartWidth, chartHeight)}
-            </ScrollView>
+            {hasStickyAxis ? (
+              <View style={styles.stickyChartRow}>
+                {/* Fixed Sticky Y-Axis Column (never scrolls off screen!) */}
+                <View style={[styles.stickyYAxisCol, { width: yAxisWidth, height: chartHeight }]}>
+                  {renderYAxis!(chartHeight)}
+                </View>
+
+                {/* Horizontally Scrollable Plot Area */}
+                <ScrollView
+                  ref={horizontalScrollRef}
+                  horizontal={true}
+                  showsHorizontalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                  contentContainerStyle={{
+                    minWidth: plotWidth,
+                    paddingRight: 16,
+                  }}
+                >
+                  {renderPlot!(scale, plotWidth, chartHeight)}
+                </ScrollView>
+              </View>
+            ) : (
+              <ScrollView
+                ref={horizontalScrollRef}
+                horizontal={true}
+                showsHorizontalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                contentContainerStyle={{
+                  minWidth: plotWidth,
+                  paddingHorizontal: 8,
+                  paddingVertical: 10,
+                }}
+              >
+                {renderChart ? renderChart(scale, plotWidth, chartHeight) : null}
+              </ScrollView>
+            )}
           </View>
 
           {/* Legend Section */}
@@ -218,8 +254,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
@@ -227,17 +263,19 @@ const styles = StyleSheet.create({
   },
   titleArea: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 10,
   },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    flexWrap: 'nowrap',
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
+    flexShrink: 1,
   },
   badge: {
     backgroundColor: '#CCFBF1',
@@ -246,6 +284,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.full,
     borderWidth: 1,
     borderColor: '#99F6E4',
+    flexShrink: 0,
   },
   badgeText: {
     fontSize: 10,
@@ -253,25 +292,25 @@ const styles = StyleSheet.create({
     color: '#0F766E',
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
     color: '#64748B',
     marginTop: 2,
   },
   closeBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#F1F5F9',
-    borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    minHeight: 44,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   closeBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: '#334155',
   },
   toolbar: {
@@ -279,20 +318,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
-  scaleSteppers: {
+  zoomGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   stepBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.md,
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.sm,
     backgroundColor: '#0D9488',
     alignItems: 'center',
     justifyContent: 'center',
@@ -301,10 +340,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#E2E8F0',
   },
   stepBtnText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#FFFFFF',
-    lineHeight: 22,
+    lineHeight: 20,
   },
   stepBtnTextDisabled: {
     color: '#94A3B8',
@@ -312,21 +351,21 @@ const styles = StyleSheet.create({
   presetChips: {
     flexDirection: 'row',
     backgroundColor: '#F1F5F9',
-    borderRadius: RADIUS.md,
-    padding: 3,
+    borderRadius: RADIUS.sm,
+    padding: 2,
     gap: 2,
   },
   chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: RADIUS.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 4,
   },
   chipActive: {
     backgroundColor: '#0D9488',
     ...SHADOWS.card,
   },
   chipText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#64748B',
   },
@@ -335,14 +374,14 @@ const styles = StyleSheet.create({
   },
   resetBtn: {
     paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: RADIUS.md,
+    paddingVertical: 6,
+    borderRadius: RADIUS.sm,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
   },
   resetBtnText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#475569',
   },
@@ -350,11 +389,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0FDFA',
     borderBottomWidth: 1,
     borderBottomColor: '#CCFBF1',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 6,
   },
   hintText: {
-    fontSize: 11,
+    fontSize: 10.5,
     color: '#0F766E',
     fontWeight: '500',
   },
@@ -363,7 +402,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   verticalContent: {
-    padding: 14,
+    padding: 12,
     paddingBottom: 40,
   },
   chartCard: {
@@ -374,8 +413,18 @@ const styles = StyleSheet.create({
     ...SHADOWS.card,
     overflow: 'hidden',
   },
+  stickyChartRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  stickyYAxisCol: {
+    backgroundColor: '#FAFAFA',
+    borderRightWidth: 1,
+    borderRightColor: '#E2E8F0',
+    zIndex: 10,
+  },
   legendContainer: {
-    marginTop: 12,
+    marginTop: 10,
     backgroundColor: '#FFFFFF',
     padding: 12,
     borderRadius: RADIUS.md,
@@ -383,6 +432,6 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   extraContainer: {
-    marginTop: 12,
+    marginTop: 10,
   },
 });

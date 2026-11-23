@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import Svg, { Path, Circle, Line, Text as SvgText, G } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Text as SvgText, Rect, G } from 'react-native-svg';
 import {
   FENTON_PRETERM_BOYS,
   FENTON_PRETERM_GIRLS,
@@ -67,20 +67,70 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
   const currentPmaWeeks = +(birthGestationalWeeks + daysSinceBirth / 7).toFixed(1);
   const isTransitioned = currentPmaWeeks >= 50;
 
-  // Y-axis scales per tab
-  let minY = 0.4;
-  let maxY = 7.5;
-  let unit = 'kg';
+  const getYConfig = (h: number) => {
+    const padTop = 18;
+    const padBottom = 26;
+    const plotH = h - padTop - padBottom;
 
-  if (activeTab === 'LENGTH') {
-    minY = 25;
-    maxY = 65;
-    unit = 'cm';
-  } else if (activeTab === 'HC') {
-    minY = 18;
-    maxY = 44;
-    unit = 'cm';
-  }
+    let minY = 0.4;
+    let maxY = 7.5;
+    let unit = 'kg';
+    let ticks = [1, 2, 3, 4, 5, 6, 7];
+
+    if (activeTab === 'LENGTH') {
+      minY = 25;
+      maxY = 65;
+      unit = 'cm';
+      ticks = [30, 40, 50, 60];
+    } else if (activeTab === 'HC') {
+      minY = 18;
+      maxY = 44;
+      unit = 'cm';
+      ticks = [20, 26, 32, 38, 42];
+    }
+
+    const getY = (val: number) => padTop + plotH - ((val - minY) / (maxY - minY)) * plotH;
+
+    return { minY, maxY, padTop, padBottom, plotH, unit, ticks, getY };
+  };
+
+  // Fixed Left Y-Axis for Zoomed View
+  const renderFixedYAxis = (h: number) => {
+    const { ticks, unit, getY } = getYConfig(h);
+    const yAxisWidth = 44;
+
+    return (
+      <Svg width={yAxisWidth} height={h}>
+        <Rect x={0} y={0} width={yAxisWidth} height={h} fill="#F8FAFC" />
+        <Line x1={yAxisWidth - 1} y1={0} x2={yAxisWidth - 1} y2={h} stroke="#CBD5E1" strokeWidth={1.5} />
+        {ticks.map((val) => {
+          const y = getY(val);
+          return (
+            <G key={`fenton-fix-y-${val}`}>
+              <Line
+                x1={yAxisWidth - 6}
+                y1={y}
+                x2={yAxisWidth - 1}
+                y2={y}
+                stroke="#94A3B8"
+                strokeWidth={1.5}
+              />
+              <SvgText
+                x={yAxisWidth - 8}
+                y={y + 3.5}
+                fontSize={10.5}
+                fontWeight="700"
+                fill="#334155"
+                textAnchor="end"
+              >
+                {val}{unit}
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    );
+  };
 
   // Build Centile Curves for Active Tab
   const getP10 = (p: FentonPretermPoint) =>
@@ -98,15 +148,16 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
     const pma = +(birthGestationalWeeks + daysOld / 7).toFixed(1);
 
     let val: number | null = null;
-    if (activeTab === 'WEIGHT' && r.weight_kg) val = r.weight_kg;
-    if (activeTab === 'LENGTH' && r.height_cm) val = r.height_cm;
-    if (activeTab === 'HC' && r.head_circumference_cm) val = r.head_circumference_cm;
+    let unitStr = 'kg';
+    if (activeTab === 'WEIGHT' && r.weight_kg) { val = r.weight_kg; unitStr = 'kg'; }
+    if (activeTab === 'LENGTH' && r.height_cm) { val = r.height_cm; unitStr = 'cm'; }
+    if (activeTab === 'HC' && r.head_circumference_cm) { val = r.head_circumference_cm; unitStr = 'cm'; }
 
     if (val !== null && pma >= 24 && pma <= 52) {
       patientPoints.push({
         pmaWeeks: pma,
         value: val,
-        label: `${val}${unit}`,
+        label: `${val}${unitStr}`,
         date: r.recorded_date,
       });
     }
@@ -114,17 +165,18 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
 
   patientPoints.sort((a, b) => a.pmaWeeks - b.pmaWeeks);
 
-  const renderFentonSvg = (width: number, height: number, interactive = false) => {
-    const padLeft = 38;
-    const padRight = 20;
-    const padTop = 18;
-    const padBottom = 26;
-
+  const renderPlotArea = (
+    width: number,
+    height: number,
+    interactive = false,
+    useOffsetLeft = false
+  ) => {
+    const padLeft = useOffsetLeft ? 38 : 6;
+    const padRight = 18;
+    const { padTop, padBottom, unit, ticks, getY } = getYConfig(height);
     const plotW = width - padLeft - padRight;
-    const plotH = height - padTop - padBottom;
 
     const getX = (w: number) => padLeft + ((w - minX) / (maxX - minX)) * plotW;
-    const getY = (val: number) => padTop + plotH - ((val - minY) / (maxY - minY)) * plotH;
 
     const pts10 = table.map((p) => `${getX(p.week)},${getY(getP10(p))}`);
     const pts90Rev = [...table].reverse().map((p) => `${getX(p.week)},${getY(getP90(p))}`);
@@ -145,9 +197,66 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
     return (
       <Svg width={width} height={height}>
         {/* Shaded 10th to 90th Centile Corridor */}
-        <Path d={corridorPath} fill="rgba(99, 102, 241, 0.15)" />
+        <Path d={corridorPath} fill="rgba(99, 102, 241, 0.16)" />
 
-        {/* 10th Centile Line */}
+        {/* Horizontal Grid lines */}
+        {ticks.map((val) => {
+          const y = getY(val);
+          return (
+            <G key={`fenton-grid-y-${val}`}>
+              <Line
+                x1={0}
+                y1={y}
+                x2={width}
+                y2={y}
+                stroke="#E2E8F0"
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+              {useOffsetLeft && (
+                <SvgText
+                  x={padLeft - 6}
+                  y={y + 3.5}
+                  fontSize={10}
+                  fontWeight="600"
+                  fill="#64748B"
+                  textAnchor="end"
+                >
+                  {val}{unit}
+                </SvgText>
+              )}
+            </G>
+          );
+        })}
+
+        {/* X-axis Grid & Labels */}
+        {weeksToShow.map((w) => {
+          const x = getX(w);
+          return (
+            <G key={`fenton-grid-x-${w}`}>
+              <Line
+                x1={x}
+                y1={padTop}
+                x2={x}
+                y2={height - padBottom}
+                stroke="#E2E8F0"
+                strokeWidth={1}
+              />
+              <SvgText
+                x={x}
+                y={height - padBottom + 16}
+                fontSize={10.5}
+                fontWeight="700"
+                fill="#475569"
+                textAnchor="middle"
+              >
+                {w}w
+              </SvgText>
+            </G>
+          );
+        })}
+
+        {/* 10th & 90th Centile Lines */}
         <Path
           d={table.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(getP10(p))}`).join(' ')}
           stroke="#6366F1"
@@ -155,8 +264,6 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
           strokeDasharray="4, 3"
           fill="none"
         />
-
-        {/* 90th Centile Line */}
         <Path
           d={table.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(getP90(p))}`).join(' ')}
           stroke="#6366F1"
@@ -166,167 +273,77 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
         />
 
         {/* 50th Centile Median */}
-        <Path d={p50LinePath} stroke="#4F46E5" strokeWidth={2} fill="none" />
-
-        {/* X-axis Grid */}
-        {weeksToShow.map((w) => {
-          const x = getX(w);
-          return (
-            <G key={`fenton-x-${w}`}>
-              <Line
-                x1={x}
-                y1={padTop}
-                x2={x}
-                y2={height - padBottom}
-                stroke="#F1F5F9"
-                strokeWidth={1}
-              />
-              <SvgText
-                x={x}
-                y={height - padBottom + 16}
-                fontSize={10}
-                fontWeight="600"
-                fill="#64748B"
-                textAnchor="middle"
-              >
-                {w}w
-              </SvgText>
-            </G>
-          );
-        })}
-
-        {/* Y-axis Ticks */}
-        {activeTab === 'WEIGHT' &&
-          [1, 2, 3, 4, 5, 6, 7].map((val) => {
-            const y = getY(val);
-            return (
-              <G key={`y-wt-${val}`}>
-                <Line
-                  x1={padLeft}
-                  y1={y}
-                  x2={width - padRight}
-                  y2={y}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
-                <SvgText
-                  x={padLeft - 6}
-                  y={y + 4}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="end"
-                >
-                  {val}kg
-                </SvgText>
-              </G>
-            );
-          })}
-
-        {activeTab === 'LENGTH' &&
-          [30, 40, 50, 60].map((val) => {
-            const y = getY(val);
-            return (
-              <G key={`y-len-${val}`}>
-                <Line
-                  x1={padLeft}
-                  y1={y}
-                  x2={width - padRight}
-                  y2={y}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
-                <SvgText
-                  x={padLeft - 6}
-                  y={y + 4}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="end"
-                >
-                  {val}cm
-                </SvgText>
-              </G>
-            );
-          })}
-
-        {activeTab === 'HC' &&
-          [20, 26, 32, 38, 42].map((val) => {
-            const y = getY(val);
-            return (
-              <G key={`y-hc-${val}`}>
-                <Line
-                  x1={padLeft}
-                  y1={y}
-                  x2={width - padRight}
-                  y2={y}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
-                <SvgText
-                  x={padLeft - 6}
-                  y={y + 4}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="end"
-                >
-                  {val}cm
-                </SvgText>
-              </G>
-            );
-          })}
+        <Path d={p50LinePath} stroke="#4F46E5" strokeWidth={2.2} fill="none" />
 
         {/* Patient Line */}
         {patientPoints.length > 1 && (
           <Path
             d={patientLinePath}
             stroke="#0D9488"
-            strokeWidth={3}
+            strokeWidth={3.5}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         )}
 
-        {/* Patient Dots */}
+        {/* Patient Dots & Readable Pills */}
         {patientPoints.map((pt, i) => {
           const cx = getX(pt.pmaWeeks);
           const cy = getY(pt.value);
           const isLatest = i === patientPoints.length - 1;
           const isSelected = selectedPoint?.date === pt.date && selectedPoint?.pmaWeeks === pt.pmaWeeks;
 
+          const prevPt = i > 0 ? patientPoints[i - 1] : null;
+          const prevCx = prevPt ? getX(prevPt.pmaWeeks) : -999;
+          const isTooClose = Math.abs(cx - prevCx) < 36;
+          const shouldShowLabel = !isTooClose || isSelected || isLatest;
+
           return (
             <G
-              key={`pt-${i}`}
+              key={`fenton-pt-${i}`}
               onPress={() => interactive && setSelectedPoint(pt)}
             >
               {isSelected && (
                 <Circle
                   cx={cx}
                   cy={cy}
-                  r={12}
+                  r={14}
                   fill="rgba(13, 148, 136, 0.25)"
                 />
               )}
               <Circle
                 cx={cx}
                 cy={cy}
-                r={isSelected ? 7 : isLatest ? 6 : 4.5}
-                fill={isSelected ? '#0F766E' : '#0D9488'}
+                r={isSelected ? 7.5 : isLatest ? 6.5 : 5}
+                fill={isSelected ? '#0F172A' : '#0D9488'}
                 stroke="#FFFFFF"
-                strokeWidth={2}
+                strokeWidth={2.5}
               />
-              <SvgText
-                x={cx}
-                y={cy - 8}
-                fontSize={isSelected ? 11 : 9}
-                fontWeight="bold"
-                fill={isSelected ? '#0F766E' : '#1E293B'}
-                textAnchor="middle"
-              >
-                {pt.label}
-              </SvgText>
+              {shouldShowLabel && (
+                <G>
+                  <Rect
+                    x={cx - 18}
+                    y={cy - 22}
+                    width={36}
+                    height={15}
+                    rx={4}
+                    fill="#FFFFFF"
+                    stroke={isSelected ? '#0D9488' : '#CBD5E1'}
+                    strokeWidth={isSelected ? 1.5 : 1}
+                  />
+                  <SvgText
+                    x={cx}
+                    y={cy - 11}
+                    fontSize={9.5}
+                    fontWeight="800"
+                    fill={isSelected ? '#0F766E' : '#0F172A'}
+                    textAnchor="middle"
+                  >
+                    {pt.label}
+                  </SvgText>
+                </G>
+              )}
             </G>
           );
         })}
@@ -341,7 +358,7 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
         onPress={() => setActiveTab('WEIGHT')}
       >
         <Text style={[styles.tabBtnText, activeTab === 'WEIGHT' && styles.tabBtnTextActive]}>
-          Weight (බර)
+          බර (Weight)
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -349,7 +366,7 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
         onPress={() => setActiveTab('LENGTH')}
       >
         <Text style={[styles.tabBtnText, activeTab === 'LENGTH' && styles.tabBtnTextActive]}>
-          Length (දිග)
+          දිග (Length)
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -357,7 +374,7 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
         onPress={() => setActiveTab('HC')}
       >
         <Text style={[styles.tabBtnText, activeTab === 'HC' && styles.tabBtnTextActive]}>
-          Head Circ. (හිස වටලීම)
+          හිස වට (HC)
         </Text>
       </TouchableOpacity>
     </View>
@@ -367,11 +384,11 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
     <View style={styles.legendRow}>
       <View style={styles.legendItem}>
         <View style={[styles.legendBox, { backgroundColor: '#0D9488' }]} />
-        <Text style={styles.legendText}>Preterm Infant&apos;s Growth</Text>
+        <Text style={styles.legendText}>Infant Growth</Text>
       </View>
       <View style={styles.legendItem}>
         <View style={[styles.legendBox, { backgroundColor: '#4F46E5' }]} />
-        <Text style={styles.legendText}>50th Centile Median</Text>
+        <Text style={styles.legendText}>50th Centile</Text>
       </View>
       <View style={styles.legendItem}>
         <View style={[styles.legendBox, { backgroundColor: 'rgba(99, 102, 241, 0.3)' }]} />
@@ -425,7 +442,7 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
           onPress={() => setIsFullscreen(true)}
           accessibilityLabel="Expand and zoom Fenton preterm chart"
         >
-          <Text style={styles.expandBtnText}>🔍 විශාල කර බලන්න</Text>
+          <Text style={styles.expandBtnText}>🔍 විශාල කරන්න</Text>
         </TouchableOpacity>
       </View>
 
@@ -435,15 +452,15 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
       {/* Metric Selector Tabs */}
       {renderTabs()}
 
-      {/* SVG Canvas */}
+      {/* Standard SVG Canvas */}
       <View style={styles.svgWrapper}>
-        {renderFentonSvg(defaultWidth, defaultHeight, false)}
+        {renderPlotArea(defaultWidth, defaultHeight, false, true)}
       </View>
 
       {/* Legend */}
       {renderLegend()}
 
-      {/* Zoom Modal */}
+      {/* Zoom Modal with Sticky Y-Axis */}
       {isFullscreen && (
         <ChartZoomModal
           visible={isFullscreen}
@@ -455,9 +472,11 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
           subtitle={childName ? `දරුවා: ${childName} (උපත: සති ${birthGestationalWeeks})` : 'නොමේරූ දරු වර්ධන ප්‍රස්තාරය'}
           badgeText={`PMA ${currentPmaWeeks}w`}
           baseWidth={screenWidth - 24}
-          baseHeight={280}
+          baseHeight={340}
           initialScale={1.5}
-          renderChart={(_scale, w, h) => renderFentonSvg(w, h, true)}
+          yAxisWidth={44}
+          renderYAxis={(h) => renderFixedYAxis(h)}
+          renderPlot={(_scale, w, h) => renderPlotArea(w, h, true, false)}
           legend={
             <View>
               {renderTabs()}
@@ -538,7 +557,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#99F6E4',
     alignSelf: 'flex-start',
-    minHeight: 38,
+    minHeight: 36,
     justifyContent: 'center',
   },
   expandBtnText: {
@@ -585,20 +604,16 @@ const styles = StyleSheet.create({
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 6,
+    paddingVertical: 7,
     alignItems: 'center',
     borderRadius: 6,
   },
   tabBtnActive: {
     backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    ...SHADOWS.card,
   },
   tabBtnText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
   },

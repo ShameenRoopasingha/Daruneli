@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import Svg, { Path, Circle, Line, Text as SvgText, G } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Text as SvgText, Rect, G } from 'react-native-svg';
 import {
   SFH_REFERENCE_TABLE,
 } from '../../engine/referenceCurves';
@@ -48,80 +48,135 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
   const maxX = 40;
   const minY = 10;
   const maxY = 45;
+  const yTicks = [15, 20, 25, 30, 35, 40];
 
-  const renderSfhSvg = (width: number, height: number, interactive = false) => {
-    const padLeft = 38;
-    const padRight = 20;
-    const padTop = 20;
-    const padBottom = 28;
-
-    const plotW = width - padLeft - padRight;
-    const plotH = height - padTop - padBottom;
-
-    const getX = (week: number) => padLeft + ((week - minX) / (maxX - minX)) * plotW;
+  const getYConfig = (h: number) => {
+    const padTop = 18;
+    const padBottom = 26;
+    const plotH = h - padTop - padBottom;
     const getY = (cm: number) => padTop + plotH - ((cm - minY) / (maxY - minY)) * plotH;
+    return { padTop, padBottom, plotH, getY };
+  };
 
-    // Build SVG polygon path for 10th to 90th centile shaded corridor
-    const p10Points = SFH_REFERENCE_TABLE.map((p) => `${getX(p.week)},${getY(p.p10)}`);
-    const p90PointsReversed = [...SFH_REFERENCE_TABLE].reverse().map((p) => `${getX(p.week)},${getY(p.p90)}`);
-    const corridorPath = `M ${p10Points.join(' L ')} L ${p90PointsReversed.join(' L ')} Z`;
-
-    // Median 50th centile line
-    const p50Path = SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p50)}`).join(' ');
-
-    // Patient's recorded visits path
-    const patientPath = validVisits
-      .map((v, i) => `${i === 0 ? 'M' : 'L'} ${getX(v.poaWeeks!)} ${getY(v.sfhCm!)}`)
-      .join(' ');
+  // Fixed Left Y-Axis for Zoomed View
+  const renderFixedYAxis = (h: number) => {
+    const { getY } = getYConfig(h);
+    const yAxisWidth = 44;
 
     return (
-      <Svg width={width} height={height}>
-        {/* Background Grid Lines (Y-axis: 15, 20, 25, 30, 35, 40 cm) */}
-        {[15, 20, 25, 30, 35, 40].map((val) => {
+      <Svg width={yAxisWidth} height={h}>
+        <Rect x={0} y={0} width={yAxisWidth} height={h} fill="#F8FAFC" />
+        <Line x1={yAxisWidth - 1} y1={0} x2={yAxisWidth - 1} y2={h} stroke="#CBD5E1" strokeWidth={1.5} />
+        {yTicks.map((val) => {
           const y = getY(val);
           return (
-            <G key={`grid-y-${val}`}>
+            <G key={`sfh-fix-y-${val}`}>
               <Line
-                x1={padLeft}
+                x1={yAxisWidth - 6}
                 y1={y}
-                x2={width - padRight}
+                x2={yAxisWidth - 1}
                 y2={y}
-                stroke="#F1F5F9"
-                strokeWidth={1}
+                stroke="#94A3B8"
+                strokeWidth={1.5}
               />
               <SvgText
-                x={padLeft - 6}
-                y={y + 4}
-                fontSize={10}
-                fontWeight="600"
-                fill="#64748B"
+                x={yAxisWidth - 8}
+                y={y + 3.5}
+                fontSize={10.5}
+                fontWeight="700"
+                fill="#334155"
                 textAnchor="end"
               >
-                {val}
+                {val}cm
               </SvgText>
             </G>
           );
         })}
+      </Svg>
+    );
+  };
 
-        {/* Background Grid Lines (X-axis: 16, 20, 24, 28, 32, 36, 40 weeks) */}
-        {[16, 20, 24, 28, 32, 36, 40].map((w) => {
+  const renderPlotArea = (
+    width: number,
+    height: number,
+    interactive = false,
+    useOffsetLeft = false
+  ) => {
+    const padLeft = useOffsetLeft ? 38 : 6;
+    const padRight = 18;
+    const { padTop, padBottom, getY } = getYConfig(height);
+    const plotW = width - padLeft - padRight;
+
+    const getX = (week: number) => padLeft + ((week - minX) / (maxX - minX)) * plotW;
+
+    const p10Points = SFH_REFERENCE_TABLE.map((p) => `${getX(p.week)},${getY(p.p10)}`);
+    const p90PointsReversed = [...SFH_REFERENCE_TABLE].reverse().map((p) => `${getX(p.week)},${getY(p.p90)}`);
+    const corridorPath = `M ${p10Points.join(' L ')} L ${p90PointsReversed.join(' L ')} Z`;
+
+    const p50Path = SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p50)}`).join(' ');
+
+    const patientPath = validVisits
+      .map((v, i) => `${i === 0 ? 'M' : 'L'} ${getX(v.poaWeeks!)} ${getY(v.sfhCm!)}`)
+      .join(' ');
+
+    const weeksToShow = width > 500
+      ? [16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40]
+      : [16, 20, 24, 28, 32, 36, 40];
+
+    return (
+      <Svg width={width} height={height}>
+        {/* Shaded Corridor */}
+        <Path d={corridorPath} fill="rgba(16, 185, 129, 0.16)" />
+
+        {/* Horizontal Grid lines */}
+        {yTicks.map((val) => {
+          const y = getY(val);
+          return (
+            <G key={`sfh-grid-y-${val}`}>
+              <Line
+                x1={0}
+                y1={y}
+                x2={width}
+                y2={y}
+                stroke="#E2E8F0"
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+              {useOffsetLeft && (
+                <SvgText
+                  x={padLeft - 6}
+                  y={y + 3.5}
+                  fontSize={10}
+                  fontWeight="600"
+                  fill="#64748B"
+                  textAnchor="end"
+                >
+                  {val}cm
+                </SvgText>
+              )}
+            </G>
+          );
+        })}
+
+        {/* X-axis Grid & Labels */}
+        {weeksToShow.map((w) => {
           const x = getX(w);
           return (
-            <G key={`grid-x-${w}`}>
+            <G key={`sfh-grid-x-${w}`}>
               <Line
                 x1={x}
                 y1={padTop}
                 x2={x}
                 y2={height - padBottom}
-                stroke="#F1F5F9"
+                stroke="#E2E8F0"
                 strokeWidth={1}
               />
               <SvgText
                 x={x}
                 y={height - padBottom + 16}
-                fontSize={10}
-                fontWeight="600"
-                fill="#64748B"
+                fontSize={10.5}
+                fontWeight="700"
+                fill="#475569"
                 textAnchor="middle"
               >
                 {w}w
@@ -130,10 +185,7 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
           );
         })}
 
-        {/* 10th to 90th Centile Shaded Normal Corridor */}
-        <Path d={corridorPath} fill="rgba(16, 185, 129, 0.15)" />
-
-        {/* 10th Centile Line (SGA lower limit) */}
+        {/* 10th and 90th Centile Boundary Lines */}
         <Path
           d={SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p10)}`).join(' ')}
           stroke="#10B981"
@@ -141,8 +193,6 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
           strokeDasharray="4, 3"
           fill="none"
         />
-
-        {/* 90th Centile Line (LGA upper limit) */}
         <Path
           d={SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p90)}`).join(' ')}
           stroke="#10B981"
@@ -152,21 +202,21 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
         />
 
         {/* 50th Centile Median Line */}
-        <Path d={p50Path} stroke="#059669" strokeWidth={2} fill="none" />
+        <Path d={p50Path} stroke="#059669" strokeWidth={2.2} fill="none" />
 
         {/* Patient SFH Curve */}
         {validVisits.length > 1 && (
           <Path
             d={patientPath}
             stroke="#2563EB"
-            strokeWidth={3}
+            strokeWidth={3.5}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         )}
 
-        {/* Patient SFH Data Points */}
+        {/* Patient SFH Data Points & Readable Pills */}
         {validVisits.map((v, idx) => {
           const cx = getX(v.poaWeeks!);
           const cy = getY(v.sfhCm!);
@@ -176,37 +226,56 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
             selectedVisit.poaWeeks === v.poaWeeks &&
             selectedVisit.sfhCm === v.sfhCm;
 
+          const prevV = idx > 0 ? validVisits[idx - 1] : null;
+          const prevCx = prevV ? getX(prevV.poaWeeks!) : -999;
+          const isTooClose = Math.abs(cx - prevCx) < 36;
+          const shouldShowLabel = !isTooClose || isSelected || isLatest;
+
           return (
             <G
-              key={`patient-pt-${idx}`}
+              key={`sfh-pt-${idx}`}
               onPress={() => interactive && setSelectedVisit(v)}
             >
               {isSelected && (
                 <Circle
                   cx={cx}
                   cy={cy}
-                  r={12}
-                  fill="rgba(37, 99, 235, 0.2)"
+                  r={14}
+                  fill="rgba(37, 99, 235, 0.25)"
                 />
               )}
               <Circle
                 cx={cx}
                 cy={cy}
-                r={isSelected ? 7 : isLatest ? 6 : 4.5}
-                fill={isSelected ? '#1D4ED8' : isLatest ? '#2563EB' : '#3B82F6'}
+                r={isSelected ? 7.5 : isLatest ? 6.5 : 5}
+                fill={isSelected ? '#0F172A' : isLatest ? '#1D4ED8' : '#2563EB'}
                 stroke="#FFFFFF"
-                strokeWidth={2}
+                strokeWidth={2.5}
               />
-              <SvgText
-                x={cx}
-                y={cy - 9}
-                fontSize={isSelected ? 11 : 9}
-                fontWeight="bold"
-                fill={isSelected ? '#1D4ED8' : '#1E293B'}
-                textAnchor="middle"
-              >
-                {v.sfhCm}
-              </SvgText>
+              {shouldShowLabel && (
+                <G>
+                  <Rect
+                    x={cx - 18}
+                    y={cy - 22}
+                    width={36}
+                    height={15}
+                    rx={4}
+                    fill="#FFFFFF"
+                    stroke={isSelected ? '#2563EB' : '#CBD5E1'}
+                    strokeWidth={isSelected ? 1.5 : 1}
+                  />
+                  <SvgText
+                    x={cx}
+                    y={cy - 11}
+                    fontSize={9.5}
+                    fontWeight="800"
+                    fill={isSelected ? '#1D4ED8' : '#0F172A'}
+                    textAnchor="middle"
+                  >
+                    {v.sfhCm}
+                  </SvgText>
+                </G>
+              )}
             </G>
           );
         })}
@@ -313,7 +382,7 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
           onPress={() => setIsFullscreen(true)}
           accessibilityLabel="Expand and zoom chart"
         >
-          <Text style={styles.expandBtnText}>🔍 විශාල කර බලන්න</Text>
+          <Text style={styles.expandBtnText}>🔍 විශාල කරන්න</Text>
         </TouchableOpacity>
       </View>
 
@@ -322,7 +391,7 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
 
       {/* Standard SVG Canvas */}
       <View style={styles.svgWrapper}>
-        {renderSfhSvg(defaultWidth, defaultHeight, false)}
+        {renderPlotArea(defaultWidth, defaultHeight, false, true)}
       </View>
 
       {/* Chart Legend */}
@@ -331,7 +400,7 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
       {/* Measurement Table Snippet */}
       {renderTable()}
 
-      {/* Zoom & Fullscreen Interactive Modal */}
+      {/* Zoom Modal with Sticky Y-Axis */}
       {isFullscreen && (
         <ChartZoomModal
           visible={isFullscreen}
@@ -343,9 +412,11 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
           subtitle={motherName ? `මව: ${motherName} (සති 16 - 40)` : 'ගර්භාෂ උස ප්‍රස්තාරය (සති 16 - 40)'}
           badgeText="FHB Standard"
           baseWidth={screenWidth - 24}
-          baseHeight={280}
+          baseHeight={340}
           initialScale={1.5}
-          renderChart={(_scale, w, h) => renderSfhSvg(w, h, true)}
+          yAxisWidth={44}
+          renderYAxis={(h) => renderFixedYAxis(h)}
+          renderPlot={(_scale, w, h) => renderPlotArea(w, h, true, false)}
           legend={renderLegend()}
           extraContent={
             <View>
@@ -422,7 +493,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#99F6E4',
     alignSelf: 'flex-start',
-    minHeight: 38,
+    minHeight: 36,
     justifyContent: 'center',
   },
   expandBtnText: {

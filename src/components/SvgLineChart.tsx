@@ -208,6 +208,11 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
           const x = getX(i);
           const yPrimary = getY(pt.value);
           const isSelected = selectedPointIndex === i;
+          const isLatest = i === data.length - 1;
+
+          const prevX = i > 0 ? getX(i - 1) : -999;
+          const isTooClose = Math.abs(x - prevX) < 36;
+          const shouldShowLabel = !isTooClose || isSelected || isLatest;
 
           return (
             <G
@@ -218,28 +223,42 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
                 <Circle
                   cx={x}
                   cy={yPrimary}
-                  r={12}
+                  r={14}
                   fill="rgba(13, 148, 136, 0.25)"
                 />
               )}
               <Circle
                 cx={x}
                 cy={yPrimary}
-                r={isSelected ? 6.5 : 4.5}
+                r={isSelected ? 7 : 5}
                 fill={primaryColor}
                 stroke="#FFFFFF"
-                strokeWidth={2}
+                strokeWidth={2.5}
               />
-              <SvgText
-                x={x}
-                y={yPrimary - 8}
-                fontSize={isSelected ? 11 : 10}
-                fill={COLORS.textPrimary}
-                fontWeight="800"
-                textAnchor="middle"
-              >
-                {pt.value}
-              </SvgText>
+              {shouldShowLabel && (
+                <G>
+                  <Rect
+                    x={x - 16}
+                    y={yPrimary - 20}
+                    width={32}
+                    height={14}
+                    rx={3}
+                    fill="#FFFFFF"
+                    stroke={isSelected ? primaryColor : '#E2E8F0'}
+                    strokeWidth={1}
+                  />
+                  <SvgText
+                    x={x}
+                    y={yPrimary - 10}
+                    fontSize={9.5}
+                    fill={isSelected ? primaryColor : COLORS.textPrimary}
+                    fontWeight="800"
+                    textAnchor="middle"
+                  >
+                    {pt.value}
+                  </SvgText>
+                </G>
+              )}
 
               {pt.secondaryValue !== undefined && (
                 <G>
@@ -247,28 +266,42 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
                     <Circle
                       cx={x}
                       cy={getY(pt.secondaryValue)}
-                      r={12}
+                      r={14}
                       fill="rgba(220, 38, 38, 0.25)"
                     />
                   )}
                   <Circle
                     cx={x}
                     cy={getY(pt.secondaryValue)}
-                    r={isSelected ? 6.5 : 4.5}
+                    r={isSelected ? 7 : 5}
                     fill={secondaryColor}
                     stroke="#FFFFFF"
-                    strokeWidth={2}
+                    strokeWidth={2.5}
                   />
-                  <SvgText
-                    x={x}
-                    y={getY(pt.secondaryValue) + 14}
-                    fontSize={isSelected ? 11 : 10}
-                    fill={COLORS.textPrimary}
-                    fontWeight="800"
-                    textAnchor="middle"
-                  >
-                    {pt.secondaryValue}
-                  </SvgText>
+                  {shouldShowLabel && (
+                    <G>
+                      <Rect
+                        x={x - 16}
+                        y={getY(pt.secondaryValue) + 6}
+                        width={32}
+                        height={14}
+                        rx={3}
+                        fill="#FFFFFF"
+                        stroke={isSelected ? secondaryColor : '#E2E8F0'}
+                        strokeWidth={1}
+                      />
+                      <SvgText
+                        x={x}
+                        y={getY(pt.secondaryValue) + 16}
+                        fontSize={9.5}
+                        fill={isSelected ? secondaryColor : COLORS.textPrimary}
+                        fontWeight="800"
+                        textAnchor="middle"
+                      >
+                        {pt.secondaryValue}
+                      </SvgText>
+                    </G>
+                  )}
                 </G>
               )}
 

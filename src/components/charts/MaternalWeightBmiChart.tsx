@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import Svg, { Path, Circle, Line, Text as SvgText, G } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Text as SvgText, Rect, G } from 'react-native-svg';
 import {
   getBmiCategory,
   BMI_GUIDELINES,
@@ -79,6 +79,7 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
   const maxX = 40;
   const minY = -2;
   const maxY = 22;
+  const yTicks = [0, 5, 10, 15, 20];
 
   const sampleWeeks = [12, 16, 20, 24, 28, 32, 36, 40];
 
@@ -97,17 +98,64 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
 
   const badgeTheme = getBmiBadgeStyle();
 
-  const renderBmiSvg = (width: number, height: number, interactive = false) => {
-    const padLeft = 38;
-    const padRight = 20;
+  const getYConfig = (h: number) => {
     const padTop = 18;
     const padBottom = 26;
+    const plotH = h - padTop - padBottom;
+    const getY = (kg: number) => padTop + plotH - ((kg - minY) / (maxY - minY)) * plotH;
+    return { padTop, padBottom, plotH, getY };
+  };
 
+  // Fixed Left Y-Axis for Zoomed View
+  const renderFixedYAxis = (h: number) => {
+    const { getY } = getYConfig(h);
+    const yAxisWidth = 44;
+
+    return (
+      <Svg width={yAxisWidth} height={h}>
+        <Rect x={0} y={0} width={yAxisWidth} height={h} fill="#F8FAFC" />
+        <Line x1={yAxisWidth - 1} y1={0} x2={yAxisWidth - 1} y2={h} stroke="#CBD5E1" strokeWidth={1.5} />
+        {yTicks.map((kg) => {
+          const y = getY(kg);
+          return (
+            <G key={`bmi-fix-y-${kg}`}>
+              <Line
+                x1={yAxisWidth - 6}
+                y1={y}
+                x2={yAxisWidth - 1}
+                y2={y}
+                stroke="#94A3B8"
+                strokeWidth={1.5}
+              />
+              <SvgText
+                x={yAxisWidth - 8}
+                y={y + 3.5}
+                fontSize={10.5}
+                fontWeight="700"
+                fill="#334155"
+                textAnchor="end"
+              >
+                {kg > 0 ? `+${kg}` : `${kg}`}kg
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    );
+  };
+
+  const renderPlotArea = (
+    width: number,
+    height: number,
+    interactive = false,
+    useOffsetLeft = false
+  ) => {
+    const padLeft = useOffsetLeft ? 38 : 6;
+    const padRight = 18;
+    const { padTop, padBottom, getY } = getYConfig(height);
     const plotW = width - padLeft - padRight;
-    const plotH = height - padTop - padBottom;
 
     const getX = (w: number) => padLeft + ((w - minX) / (maxX - minX)) * plotW;
-    const getY = (kg: number) => padTop + plotH - ((kg - minY) / (maxY - minY)) * plotH;
 
     const corridorPts = sampleWeeks.map((w) => {
       const c = getWeightGainCorridor(calculatedBmi, w);
@@ -132,29 +180,35 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
 
     return (
       <Svg width={width} height={height}>
-        {/* Y-axis grid lines (0, 5, 10, 15, 20 kg gain) */}
-        {[0, 5, 10, 15, 20].map((kg) => {
+        {/* Shaded Normal Corridor */}
+        <Path d={corridorPath} fill="rgba(14, 165, 233, 0.16)" />
+
+        {/* Horizontal Grid lines */}
+        {yTicks.map((kg) => {
           const y = getY(kg);
           return (
-            <G key={`grid-y-${kg}`}>
+            <G key={`bmi-grid-y-${kg}`}>
               <Line
-                x1={padLeft}
+                x1={0}
                 y1={y}
-                x2={width - padRight}
+                x2={width}
                 y2={y}
-                stroke={kg === 0 ? '#CBD5E1' : '#F1F5F9'}
+                stroke={kg === 0 ? '#CBD5E1' : '#E2E8F0'}
                 strokeWidth={kg === 0 ? 1.5 : 1}
+                strokeDasharray={kg === 0 ? undefined : '4 4'}
               />
-              <SvgText
-                x={padLeft - 6}
-                y={y + 4}
-                fontSize={10}
-                fontWeight="600"
-                fill="#64748B"
-                textAnchor="end"
-              >
-                {kg > 0 ? `+${kg}` : `${kg}`}
-              </SvgText>
+              {useOffsetLeft && (
+                <SvgText
+                  x={padLeft - 6}
+                  y={y + 3.5}
+                  fontSize={10}
+                  fontWeight="600"
+                  fill="#64748B"
+                  textAnchor="end"
+                >
+                  {kg > 0 ? `+${kg}` : `${kg}`}
+                </SvgText>
+              )}
             </G>
           );
         })}
@@ -163,21 +217,21 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
         {weeksToShow.map((w) => {
           const x = getX(w);
           return (
-            <G key={`grid-x-${w}`}>
+            <G key={`bmi-grid-x-${w}`}>
               <Line
                 x1={x}
                 y1={padTop}
                 x2={x}
                 y2={height - padBottom}
-                stroke="#F1F5F9"
+                stroke="#E2E8F0"
                 strokeWidth={1}
               />
               <SvgText
                 x={x}
                 y={height - padBottom + 16}
-                fontSize={10}
-                fontWeight="600"
-                fill="#64748B"
+                fontSize={10.5}
+                fontWeight="700"
+                fill="#475569"
                 textAnchor="middle"
               >
                 {w}w
@@ -185,9 +239,6 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
             </G>
           );
         })}
-
-        {/* Shaded Normal Weight Gain Corridor */}
-        <Path d={corridorPath} fill="rgba(14, 165, 233, 0.15)" />
 
         {/* Min & Max Corridor Boundaries */}
         <Path
@@ -210,58 +261,77 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
         />
 
         {/* Target Gain Median Line */}
-        <Path d={targetLinePath} stroke="#0369A1" strokeWidth={2} fill="none" />
+        <Path d={targetLinePath} stroke="#0369A1" strokeWidth={2.2} fill="none" />
 
         {/* Patient Gain Line */}
         {validVisits.length > 1 && (
           <Path
             d={patientPath}
             stroke="#E11D48"
-            strokeWidth={3}
+            strokeWidth={3.5}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         )}
 
-        {/* Patient Data Points */}
+        {/* Patient Data Points & Readable Pills */}
         {validVisits.map((v, i) => {
           const cx = getX(v.poaWeeks!);
           const cy = getY(v.gainKg);
           const isLatest = i === validVisits.length - 1;
           const isSelected = selectedVisit?.visitDate === v.visitDate;
 
+          const prevV = i > 0 ? validVisits[i - 1] : null;
+          const prevCx = prevV ? getX(prevV.poaWeeks!) : -999;
+          const isTooClose = Math.abs(cx - prevCx) < 36;
+          const shouldShowLabel = !isTooClose || isSelected || isLatest;
+
           return (
             <G
-              key={`pt-${i}`}
+              key={`bmi-pt-${i}`}
               onPress={() => interactive && setSelectedVisit(v)}
             >
               {isSelected && (
                 <Circle
                   cx={cx}
                   cy={cy}
-                  r={12}
+                  r={14}
                   fill="rgba(225, 29, 72, 0.25)"
                 />
               )}
               <Circle
                 cx={cx}
                 cy={cy}
-                r={isSelected ? 7 : isLatest ? 6 : 4.5}
-                fill={isSelected ? '#BE123C' : isLatest ? '#E11D48' : '#F43F5E'}
+                r={isSelected ? 7.5 : isLatest ? 6.5 : 5}
+                fill={isSelected ? '#0F172A' : isLatest ? '#E11D48' : '#F43F5E'}
                 stroke="#FFFFFF"
-                strokeWidth={2}
+                strokeWidth={2.5}
               />
-              <SvgText
-                x={cx}
-                y={cy - 8}
-                fontSize={isSelected ? 11 : 9}
-                fontWeight="bold"
-                fill={isSelected ? '#BE123C' : '#1E293B'}
-                textAnchor="middle"
-              >
-                {v.gainKg > 0 ? `+${v.gainKg}` : v.gainKg}
-              </SvgText>
+              {shouldShowLabel && (
+                <G>
+                  <Rect
+                    x={cx - 18}
+                    y={cy - 22}
+                    width={36}
+                    height={15}
+                    rx={4}
+                    fill="#FFFFFF"
+                    stroke={isSelected ? '#E11D48' : '#CBD5E1'}
+                    strokeWidth={isSelected ? 1.5 : 1}
+                  />
+                  <SvgText
+                    x={cx}
+                    y={cy - 11}
+                    fontSize={9.5}
+                    fontWeight="800"
+                    fill={isSelected ? '#E11D48' : '#0F172A'}
+                    textAnchor="middle"
+                  >
+                    {v.gainKg > 0 ? `+${v.gainKg}` : v.gainKg}
+                  </SvgText>
+                </G>
+              )}
             </G>
           );
         })}
@@ -368,7 +438,7 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
           onPress={() => setIsFullscreen(true)}
           accessibilityLabel="Expand and zoom maternal weight chart"
         >
-          <Text style={styles.expandBtnText}>🔍 විශාල කර බලන්න</Text>
+          <Text style={styles.expandBtnText}>🔍 විශාල කරන්න</Text>
         </TouchableOpacity>
       </View>
 
@@ -395,9 +465,9 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
       {/* Clinical Assessment Alert */}
       {renderAssessment()}
 
-      {/* SVG Canvas */}
+      {/* Standard SVG Canvas */}
       <View style={styles.svgWrapper}>
-        {renderBmiSvg(defaultWidth, defaultHeight, false)}
+        {renderPlotArea(defaultWidth, defaultHeight, false, true)}
       </View>
 
       {/* Legend */}
@@ -415,7 +485,7 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
 
       {showTable && renderTable()}
 
-      {/* Zoom Modal */}
+      {/* Zoom Modal with Sticky Y-Axis */}
       {isFullscreen && (
         <ChartZoomModal
           visible={isFullscreen}
@@ -427,9 +497,11 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
           subtitle={`Booking: ${baseWeight} kg • BMI ${calculatedBmi} (${bmiInfo.label})`}
           badgeText={bmiInfo.label}
           baseWidth={screenWidth - 24}
-          baseHeight={280}
+          baseHeight={340}
           initialScale={1.5}
-          renderChart={(_scale, w, h) => renderBmiSvg(w, h, true)}
+          yAxisWidth={44}
+          renderYAxis={(h) => renderFixedYAxis(h)}
+          renderPlot={(_scale, w, h) => renderPlotArea(w, h, true, false)}
           legend={renderLegend()}
           extraContent={
             <View>
@@ -504,7 +576,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#99F6E4',
     alignSelf: 'flex-start',
-    minHeight: 38,
+    minHeight: 36,
     justifyContent: 'center',
   },
   expandBtnText: {

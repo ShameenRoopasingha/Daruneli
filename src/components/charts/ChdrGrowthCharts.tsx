@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import Svg, { Path, Circle, Line, Text as SvgText, G } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Text as SvgText, Rect, G } from 'react-native-svg';
 import {
   WHO_WFA_BOYS,
   WHO_WFA_GIRLS,
@@ -88,39 +88,98 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
 
   const statusStyle = getStatusBadgeStyle();
 
-  const renderGrowthSvg = (width: number, height: number, interactive = false) => {
-    const padLeft = 38;
-    const padRight = 20;
+  // Helper to compute Y parameters for any given canvas height
+  const getYConfig = (h: number) => {
     const padTop = 18;
     const padBottom = 26;
+    const plotH = h - padTop - padBottom;
 
-    const plotW = width - padLeft - padRight;
-    const plotH = height - padTop - padBottom;
+    let minY = 0;
+    let maxY = 28;
+    let ticks = [0, 5, 10, 15, 20, 25];
+    let unit = 'kg';
+
+    if (activeTab === 'WFA') {
+      minY = 0;
+      maxY = 28;
+      ticks = [0, 5, 10, 15, 20, 25];
+      unit = 'kg';
+    } else if (activeTab === 'HFA') {
+      minY = 40;
+      maxY = 125;
+      ticks = [50, 65, 80, 95, 110, 120];
+      unit = 'cm';
+    } else if (activeTab === 'WFH') {
+      minY = 0;
+      maxY = 28;
+      ticks = [5, 10, 15, 20, 25];
+      unit = 'kg';
+    }
+
+    const getY = (val: number) => padTop + plotH - ((val - minY) / (maxY - minY)) * plotH;
+
+    return { minY, maxY, padTop, padBottom, plotH, ticks, unit, getY };
+  };
+
+  // Fixed Left Y-Axis SVG for Zoomed Fullscreen View
+  const renderFixedYAxis = (h: number) => {
+    const { ticks, unit, getY } = getYConfig(h);
+    const yAxisWidth = 44;
+
+    return (
+      <Svg width={yAxisWidth} height={h}>
+        <Rect x={0} y={0} width={yAxisWidth} height={h} fill="#F8FAFC" />
+        <Line x1={yAxisWidth - 1} y1={0} x2={yAxisWidth - 1} y2={h} stroke="#CBD5E1" strokeWidth={1.5} />
+        {ticks.map((val) => {
+          const y = getY(val);
+          return (
+            <G key={`fixed-y-${val}`}>
+              <Line
+                x1={yAxisWidth - 6}
+                y1={y}
+                x2={yAxisWidth - 1}
+                y2={y}
+                stroke="#94A3B8"
+                strokeWidth={1.5}
+              />
+              <SvgText
+                x={yAxisWidth - 8}
+                y={y + 3.5}
+                fontSize={10.5}
+                fontWeight="700"
+                fill="#334155"
+                textAnchor="end"
+              >
+                {val}{unit}
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    );
+  };
+
+  // Horizontally scrollable Plot Area SVG
+  const renderPlotArea = (
+    w: number,
+    h: number,
+    interactive = false,
+    useOffsetLeft = false
+  ) => {
+    const padLeft = useOffsetLeft ? 38 : 6;
+    const padRight = 18;
+    const { minY, padTop, padBottom, ticks, unit, getY } = getYConfig(h);
+    const plotW = w - padLeft - padRight;
 
     let minX = 0;
     let maxX = 60;
-    let minY = 0;
-    let maxY = 25;
 
-    if (activeTab === 'WFA') {
-      minX = 0;
-      maxX = 60;
-      minY = 0;
-      maxY = 28;
-    } else if (activeTab === 'HFA') {
-      minX = 0;
-      maxX = 60;
-      minY = 40;
-      maxY = 125;
-    } else if (activeTab === 'WFH') {
+    if (activeTab === 'WFH') {
       minX = 45;
       maxX = 110;
-      minY = 0;
-      maxY = 28;
     }
 
     const getX = (val: number) => padLeft + ((val - minX) / (maxX - minX)) * plotW;
-    const getY = (val: number) => padTop + plotH - ((val - minY) / (maxY - minY)) * plotH;
 
     let greenZonePath = '';
     let yellowZonePath = '';
@@ -195,110 +254,59 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
       }
     });
 
+    patientPoints.sort((a, b) => a.x - b.x);
+
     const patientLinePath = patientPoints
       .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.x)} ${getY(p.y)}`)
       .join(' ');
 
-    // X-axis ticks: show finer intervals when width is large
-    const xMonths = width > 500
+    const xMonths = w > 500
       ? [0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60]
       : [0, 12, 24, 36, 48, 60];
 
-    const xLengths = width > 500
+    const xLengths = w > 500
       ? [50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110]
       : [50, 60, 70, 80, 90, 100, 110];
 
     return (
-      <Svg width={width} height={height}>
+      <Svg width={w} height={h}>
         {/* Shaded WHO Zones */}
         <Path d={redZonePath} fill="rgba(239, 68, 68, 0.12)" />
         <Path d={yellowZonePath} fill="rgba(245, 158, 11, 0.18)" />
         <Path d={greenZonePath} fill="rgba(16, 185, 129, 0.18)" />
-        <Path d={medianPath} stroke="#059669" strokeWidth={2} fill="none" />
+        <Path d={medianPath} stroke="#059669" strokeWidth={2.2} fill="none" />
 
-        {/* Y Axis Grid */}
-        {activeTab === 'WFA' &&
-          [0, 5, 10, 15, 20, 25].map((val) => {
-            const y = getY(val);
-            return (
-              <G key={`wfa-y-${val}`}>
-                <Line
-                  x1={padLeft}
-                  y1={y}
-                  x2={width - padRight}
-                  y2={y}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
+        {/* Horizontal Grid lines */}
+        {ticks.map((val) => {
+          const y = getY(val);
+          return (
+            <G key={`grid-h-${val}`}>
+              <Line
+                x1={0}
+                y1={y}
+                x2={w}
+                y2={y}
+                stroke="#E2E8F0"
+                strokeWidth={1}
+                strokeDasharray="4 4"
+              />
+              {useOffsetLeft && (
                 <SvgText
                   x={padLeft - 6}
-                  y={y + 4}
+                  y={y + 3.5}
                   fontSize={10}
                   fontWeight="600"
                   fill="#64748B"
                   textAnchor="end"
                 >
-                  {val}kg
+                  {val}{unit}
                 </SvgText>
-              </G>
-            );
-          })}
+              )}
+            </G>
+          );
+        })}
 
-        {activeTab === 'HFA' &&
-          [50, 65, 80, 95, 110, 120].map((val) => {
-            const y = getY(val);
-            return (
-              <G key={`hfa-y-${val}`}>
-                <Line
-                  x1={padLeft}
-                  y1={y}
-                  x2={width - padRight}
-                  y2={y}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
-                <SvgText
-                  x={padLeft - 6}
-                  y={y + 4}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="end"
-                >
-                  {val}cm
-                </SvgText>
-              </G>
-            );
-          })}
-
-        {activeTab === 'WFH' &&
-          [5, 10, 15, 20, 25].map((val) => {
-            const y = getY(val);
-            return (
-              <G key={`wfh-y-${val}`}>
-                <Line
-                  x1={padLeft}
-                  y1={y}
-                  x2={width - padRight}
-                  y2={y}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
-                <SvgText
-                  x={padLeft - 6}
-                  y={y + 4}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="end"
-                >
-                  {val}kg
-                </SvgText>
-              </G>
-            );
-          })}
-
-        {/* X Axis Grid */}
+        {/* X Axis Grid & Labels */}
         {(activeTab === 'WFA' || activeTab === 'HFA') &&
           xMonths.map((m) => {
             const x = getX(m);
@@ -308,16 +316,16 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
                   x1={x}
                   y1={padTop}
                   x2={x}
-                  y2={height - padBottom}
-                  stroke="#F1F5F9"
+                  y2={h - padBottom}
+                  stroke="#E2E8F0"
                   strokeWidth={1}
                 />
                 <SvgText
                   x={x}
-                  y={height - padBottom + 16}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
+                  y={h - padBottom + 16}
+                  fontSize={10.5}
+                  fontWeight="700"
+                  fill="#475569"
                   textAnchor="middle"
                 >
                   {m}m
@@ -335,16 +343,16 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
                   x1={x}
                   y1={padTop}
                   x2={x}
-                  y2={height - padBottom}
-                  stroke="#F1F5F9"
+                  y2={h - padBottom}
+                  stroke="#E2E8F0"
                   strokeWidth={1}
                 />
                 <SvgText
                   x={x}
-                  y={height - padBottom + 16}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
+                  y={h - padBottom + 16}
+                  fontSize={10.5}
+                  fontWeight="700"
+                  fill="#475569"
                   textAnchor="middle"
                 >
                   {l}cm
@@ -358,51 +366,76 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
           <Path
             d={patientLinePath}
             stroke={themeColor}
-            strokeWidth={3}
+            strokeWidth={3.5}
             fill="none"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         )}
 
-        {/* Patient Data Dots */}
+        {/* Patient Data Dots & Anti-Collision Value Pills */}
         {patientPoints.map((pt, i) => {
           const cx = getX(pt.x);
           const cy = getY(pt.y);
           const isLatest = i === patientPoints.length - 1;
           const isSelected = selectedRecord?.recorded_date === pt.record.recorded_date;
 
+          // Collision Detection: don't render overlapping text labels if points are < 36px apart
+          const prevPt = i > 0 ? patientPoints[i - 1] : null;
+          const prevCx = prevPt ? getX(prevPt.x) : -999;
+          const isTooClose = Math.abs(cx - prevCx) < 36;
+          const shouldShowLabel = !isTooClose || isSelected || isLatest;
+
           return (
             <G
               key={`patient-dot-${i}`}
               onPress={() => interactive && setSelectedRecord(pt.record)}
             >
+              {/* Highlight Halo for Selected Point */}
               {isSelected && (
                 <Circle
                   cx={cx}
                   cy={cy}
-                  r={12}
+                  r={14}
                   fill={isBoy ? 'rgba(37, 99, 235, 0.25)' : 'rgba(225, 29, 72, 0.25)'}
                 />
               )}
+
+              {/* Point Circle */}
               <Circle
                 cx={cx}
                 cy={cy}
-                r={isSelected ? 7 : isLatest ? 6 : 4.5}
-                fill={themeColor}
+                r={isSelected ? 7.5 : isLatest ? 6.5 : 5}
+                fill={isSelected ? '#0F172A' : themeColor}
                 stroke="#FFFFFF"
-                strokeWidth={2}
+                strokeWidth={2.5}
               />
-              <SvgText
-                x={cx}
-                y={cy - 8}
-                fontSize={isSelected ? 11 : 9}
-                fontWeight="bold"
-                fill="#1E293B"
-                textAnchor="middle"
-              >
-                {pt.label}
-              </SvgText>
+
+              {/* Readable Pill Background & Text Label */}
+              {shouldShowLabel && (
+                <G>
+                  <Rect
+                    x={cx - 18}
+                    y={cy - 22}
+                    width={36}
+                    height={15}
+                    rx={4}
+                    fill="#FFFFFF"
+                    stroke={isSelected ? themeColor : '#CBD5E1'}
+                    strokeWidth={isSelected ? 1.5 : 1}
+                  />
+                  <SvgText
+                    x={cx}
+                    y={cy - 11}
+                    fontSize={9.5}
+                    fontWeight="800"
+                    fill={isSelected ? themeColor : '#0F172A'}
+                    textAnchor="middle"
+                  >
+                    {pt.label}
+                  </SvgText>
+                </G>
+              )}
             </G>
           );
         })}
@@ -417,7 +450,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
         onPress={() => setActiveTab('WFA')}
       >
         <Text style={[styles.tabBtnText, activeTab === 'WFA' && styles.tabBtnTextActive]}>
-          Weight-for-Age (WFA)
+          WFA (බර/වයස)
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -425,7 +458,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
         onPress={() => setActiveTab('HFA')}
       >
         <Text style={[styles.tabBtnText, activeTab === 'HFA' && styles.tabBtnTextActive]}>
-          Height-for-Age (HFA)
+          HFA (උස/වයස)
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -433,7 +466,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
         onPress={() => setActiveTab('WFH')}
       >
         <Text style={[styles.tabBtnText, activeTab === 'WFH' && styles.tabBtnTextActive]}>
-          Weight-for-Height
+          WFH (බර/උස)
         </Text>
       </TouchableOpacity>
     </View>
@@ -443,15 +476,15 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
     <View style={styles.legendRow}>
       <View style={styles.legendItem}>
         <View style={[styles.legendBox, { backgroundColor: 'rgba(16, 185, 129, 0.4)' }]} />
-        <Text style={styles.legendText}>Normal (කොළ කලාපය: -2SD සිට +2SD)</Text>
+        <Text style={styles.legendText}>Normal (-2SD සිට +2SD)</Text>
       </View>
       <View style={styles.legendItem}>
         <View style={[styles.legendBox, { backgroundColor: 'rgba(245, 158, 11, 0.4)' }]} />
-        <Text style={styles.legendText}>MAM (කහ කලාපය: -3SD සිට -2SD)</Text>
+        <Text style={styles.legendText}>MAM (-3SD සිට -2SD)</Text>
       </View>
       <View style={styles.legendItem}>
         <View style={[styles.legendBox, { backgroundColor: 'rgba(239, 68, 68, 0.35)' }]} />
-        <Text style={styles.legendText}>SAM (රතු කලාපය: &lt; -3SD)</Text>
+        <Text style={styles.legendText}>SAM (&lt; -3SD)</Text>
       </View>
     </View>
   );
@@ -508,7 +541,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
               ]}
             >
               <Text style={[styles.genderPillText, { color: themeColor }]}>
-                {isBoy ? '👦 Boy (පිරිමි)' : '👧 Girl (ගැහැණු)'}
+                {isBoy ? '👦 Boy' : '👧 Girl'}
               </Text>
             </View>
           </View>
@@ -521,7 +554,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
           onPress={() => setIsFullscreen(true)}
           accessibilityLabel="Expand and zoom growth chart"
         >
-          <Text style={styles.expandBtnText}>🔍 විශාල කර බලන්න</Text>
+          <Text style={styles.expandBtnText}>🔍 විශාල කරන්න</Text>
         </TouchableOpacity>
       </View>
 
@@ -548,9 +581,9 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
       {/* Segmented Control Tabs */}
       {renderTabs()}
 
-      {/* SVG Canvas */}
+      {/* Standard SVG Canvas */}
       <View style={styles.svgWrapper}>
-        {renderGrowthSvg(defaultWidth, defaultHeight, false)}
+        {renderPlotArea(defaultWidth, defaultHeight, false, true)}
       </View>
 
       {/* WHO Zone Legend */}
@@ -559,7 +592,7 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
       {/* History Table */}
       {renderTable()}
 
-      {/* Zoom Modal */}
+      {/* Zoom Modal with Sticky Fixed Y-Axis */}
       {isFullscreen && (
         <ChartZoomModal
           visible={isFullscreen}
@@ -571,9 +604,11 @@ export const ChdrGrowthCharts: React.FC<ChdrGrowthChartsProps> = ({
           subtitle={childName ? `දරුවා: ${childName} • ${isBoy ? 'පිරිමි' : 'ගැහැණු'}` : 'ළමා සෞඛ්‍ය සංවර්ධන ප්‍රස්තාරය'}
           badgeText={isBoy ? '👦 Boy' : '👧 Girl'}
           baseWidth={screenWidth - 24}
-          baseHeight={280}
+          baseHeight={340}
           initialScale={1.5}
-          renderChart={(_scale, w, h) => renderGrowthSvg(w, h, true)}
+          yAxisWidth={44}
+          renderYAxis={(h) => renderFixedYAxis(h)}
+          renderPlot={(_scale, w, h) => renderPlotArea(w, h, true, false)}
           legend={
             <View>
               {renderTabs()}
@@ -670,7 +705,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#99F6E4',
     alignSelf: 'flex-start',
-    minHeight: 38,
+    minHeight: 36,
     justifyContent: 'center',
   },
   expandBtnText: {
@@ -709,20 +744,16 @@ const styles = StyleSheet.create({
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 6,
+    paddingVertical: 7,
     alignItems: 'center',
     borderRadius: 6,
   },
   tabBtnActive: {
     backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    ...SHADOWS.card,
   },
   tabBtnText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     color: '#64748B',
   },

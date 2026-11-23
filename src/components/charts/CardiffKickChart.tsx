@@ -106,29 +106,75 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
     performSave();
   };
 
-  const renderKickSvg = (width: number, height: number, interactive = false) => {
-    const padLeft = 38;
-    const padRight = 16;
+  const getYConfig = (h: number) => {
     const padTop = 18;
     const padBottom = 26;
-
-    const plotW = width - padLeft - padRight;
-    const plotH = height - padTop - padBottom;
-
+    const plotH = h - padTop - padBottom;
     const getY = (mins: number) => padTop + plotH - (Math.min(maxMinutes, mins) / maxMinutes) * plotH;
+    return { padTop, padBottom, plotH, getY };
+  };
+
+  const renderFixedYAxis = (h: number) => {
+    const { getY } = getYConfig(h);
+    const yAxisWidth = 44;
+
+    return (
+      <Svg width={yAxisWidth} height={h}>
+        <Rect x={0} y={0} width={yAxisWidth} height={h} fill="#F8FAFC" />
+        <Line x1={yAxisWidth - 1} y1={0} x2={yAxisWidth - 1} y2={h} stroke="#CBD5E1" strokeWidth={1.5} />
+        {[120, 240, 480, 720].map((mins) => {
+          const y = getY(mins);
+          const hrs = mins / 60;
+          return (
+            <G key={`kick-fix-y-${mins}`}>
+              <Line
+                x1={yAxisWidth - 6}
+                y1={y}
+                x2={yAxisWidth - 1}
+                y2={y}
+                stroke={mins === 720 ? '#EF4444' : '#94A3B8'}
+                strokeWidth={1.5}
+              />
+              <SvgText
+                x={yAxisWidth - 8}
+                y={y + 3.5}
+                fontSize={10.5}
+                fontWeight="700"
+                fill={mins === 720 ? '#EF4444' : '#334155'}
+                textAnchor="end"
+              >
+                {hrs}h
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    );
+  };
+
+  const renderPlotArea = (
+    width: number,
+    height: number,
+    interactive = false,
+    useOffsetLeft = false
+  ) => {
+    const padLeft = useOffsetLeft ? 38 : 6;
+    const padRight = 16;
+    const { padTop, padBottom, plotH, getY } = getYConfig(height);
+    const plotW = width - padLeft - padRight;
     const barWidth = Math.max(18, Math.min(36, (plotW / (displayLogs.length || 1)) - 8));
 
     return (
       <Svg width={width} height={height}>
         {/* Safe 12-Hour Limit Reference Line (720 min) */}
         <Line
-          x1={padLeft}
+          x1={0}
           y1={getY(720)}
-          x2={width - padRight}
+          x2={width}
           y2={getY(720)}
           stroke="#EF4444"
           strokeWidth={1.5}
-          strokeDasharray="4, 3"
+          strokeDasharray="4 3"
         />
         <SvgText
           x={width - padRight - 4}
@@ -148,23 +194,26 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
           return (
             <G key={`kick-grid-${mins}`}>
               <Line
-                x1={padLeft}
+                x1={0}
                 y1={y}
-                x2={width - padRight}
+                x2={width}
                 y2={y}
-                stroke="#F1F5F9"
+                stroke="#E2E8F0"
                 strokeWidth={1}
+                strokeDasharray="4 4"
               />
-              <SvgText
-                x={padLeft - 6}
-                y={y + 4}
-                fontSize={10}
-                fontWeight="600"
-                fill="#64748B"
-                textAnchor="end"
-              >
-                {hrs}h
-              </SvgText>
+              {useOffsetLeft && (
+                <SvgText
+                  x={padLeft - 6}
+                  y={y + 4}
+                  fontSize={10}
+                  fontWeight="600"
+                  fill="#64748B"
+                  textAnchor="end"
+                >
+                  {hrs}h
+                </SvgText>
+              )}
             </G>
           );
         })}
@@ -200,13 +249,13 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
                 rx={4}
                 fill={isReduced ? '#EF4444' : '#10B981'}
                 stroke={isSelected ? '#0F172A' : 'none'}
-                strokeWidth={isSelected ? 2 : 0}
+                strokeWidth={isSelected ? 2.5 : 0}
               />
               {/* Top value in hours */}
               <SvgText
                 x={x + barWidth / 2}
                 y={Math.max(padTop + 10, y - 4)}
-                fontSize={isSelected ? 10 : 8}
+                fontSize={isSelected ? 10 : 8.5}
                 fontWeight="bold"
                 fill="#1E293B"
                 textAnchor="middle"
@@ -268,7 +317,7 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
               onPress={() => setIsFullscreen(true)}
               accessibilityLabel="Expand kick chart"
             >
-              <Text style={styles.expandBtnText}>🔍 Zoom</Text>
+              <Text style={styles.expandBtnText}>🔍 විශාල කරන්න</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -313,7 +362,7 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
         </View>
       ) : (
         <View style={styles.svgWrapper}>
-          {renderKickSvg(defaultWidth, defaultHeight, false)}
+          {renderPlotArea(defaultWidth, defaultHeight, false, true)}
         </View>
       )}
 
@@ -396,7 +445,7 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
         </View>
       </Modal>
 
-      {/* Zoom Modal */}
+      {/* Zoom Modal with Sticky Y-Axis */}
       {isFullscreen && (
         <ChartZoomModal
           visible={isFullscreen}
@@ -408,9 +457,11 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
           subtitle="දරු චලන සටහන් පත්‍රිකාව • Daily Kick Duration"
           badgeText="Cardiff Standard"
           baseWidth={screenWidth - 24}
-          baseHeight={260}
+          baseHeight={300}
           initialScale={1.5}
-          renderChart={(_scale, w, h) => renderKickSvg(w, h, true)}
+          yAxisWidth={44}
+          renderYAxis={(h) => renderFixedYAxis(h)}
+          renderPlot={(_scale, w, h) => renderPlotArea(w, h, true, false)}
           legend={renderLegend()}
           extraContent={
             selectedLog && (
