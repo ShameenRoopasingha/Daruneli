@@ -59,30 +59,39 @@
 "දරුනැලි" පද්ධතිය ස්ථර තුනකින් (Three-tier Architecture) සමන්විත වන පරිදි නවීන, පරිශීලක-හිතකාමී සහ ඉහළ කාර්යසාධනයක් සහිත තාක්ෂණික මෙවලම් උපයෝගී කරගනිමින් නිර්මාණය කර ඇත:
 
 ```mermaid
-flowchart TD
-    subgraph MobileLayer["1. ක්ෂේත්‍ර ස්ථරය (Field Mobile App - Offline First)"]
-        PHM["පවුල් සෞඛ්‍ය සේවා නිලධාරිනිය (PHM)"] -->|දත්ත ඇතුළත් කිරීම| App["Daruneli Mobile App (React Native Expo)"]
-        App --> SQLite[("Local SQLite Database (100% Offline Storage)")]
-        App --> QRScanner["Camera QR Scanner (Clinic Pass / CHDR)"]
+flowchart TB
+    subgraph Row1 ["පරිශීලක සහ ක්ෂේත්‍ර අතුරුමුහුණත් ස්ථරය (User & Field Interface Tier)"]
+        direction LR
+        subgraph MobileApp ["📱 ක්ෂේත්‍ර PHM ජංගම යෙදුම (Offline First)"]
+            PHM["👩‍⚕️ PHM නිලධාරිනිය"] --> App["Daruneli Mobile (React Native)"]
+            App --> SQLite[("💾 Local SQLite DB (100% Offline)")]
+            App --> QR["📷 Digital QR Clinic Pass Scanner"]
+        end
+        subgraph WebPortals ["💻 අධීක්ෂණ සහ මව්වරුන්ගේ ද්වාර (Web Portals)"]
+            Dashboard["MOH Clinical Dashboard (Next.js 14)"] --> Doctor["👨‍⚕️ MOH වෛද්‍යවරුන් / SPHM"]
+            MotherPortal["Mother Companion Portal (PWA)"] --> Mother["🤰 ගර්භණී මව්වරුන් (Cardiff / Pass)"]
+        end
     end
 
-    subgraph SyncLayer["2. සමමුහුර්තකරණ සහ ආරක්ෂණ ස්ථරය (Sync & Security Gateway)"]
-        App -.->|අන්තර්ජාලය ඇති විට Sync| SyncEngine["Sync Engine & Conflict Resolver"]
-        SyncEngine --> ZodVal["Zod Validation & Schema Gate"]
-        ZodVal --> Security["HMAC-SHA256 & Argon2 Security"]
+    subgraph Row2 ["ආරක්ෂණ, දත්ත සහ මධ්‍යම වලාකුළු ස්ථරය (Security, Cloud & Database Tier)"]
+        direction LR
+        subgraph SecGateway ["🛡️ ආරක්ෂණ සහ සත්‍යාපන දොරටුව (Security & API Gate)"]
+            SyncEngine["🔄 Sync Engine & Conflict Resolver"]
+            ZodVal["🔒 Zod Schema Validation (100% Strict)"]
+            Security["🔑 HMAC-SHA256 & Session Auth"]
+            SyncEngine --> ZodVal --> Security
+        end
+        subgraph CloudDB ["☁️ මධ්‍යම වලාකුළු දත්ත සමුදාය (Cloud DB & ORM)"]
+            Prisma["⚡ Prisma ORM (v7.10 Type-Safe Layer)"]
+            Postgres[("🗄️ PostgreSQL Database (Supabase Enterprise)")]
+            Prisma --> Postgres
+        end
     end
 
-    subgraph BackendLayer["3. මධ්‍යම දත්ත සහ වලාකුළු ස්ථරය (Cloud & Database Layer)"]
-        Security --> Prisma["Prisma ORM (v7.10 Type-Safe Layer)"]
-        Prisma --> DB[("PostgreSQL Database (Supabase Enterprise)")]
-    end
-
-    subgraph WebLayer["4. අධීක්ෂණ සහ මහජන සේවා ස්ථරය (Supervision & Mother Portal)"]
-        DB --> Dashboard["MOH Supervision Dashboard (Next.js 14)"]
-        DB --> MotherPortal["Mother Companion Portal (PWA)"]
-        Dashboard --> MOHDoctor["MOH වෛද්‍යවරුන් / SPHM අධීක්ෂණය"]
-        MotherPortal --> Mother["ගර්භණී මව්වරුන් (Cardiff Kick / Digital Pass)"]
-    end
+    App <==>|ද්වි-දිශා Offline Sync| SyncEngine
+    Security <==> Prisma
+    Postgres <==>|Secure HTTPS / REST| Dashboard
+    Postgres <==>|Encrypted Session| MotherPortal
 ```
 
 ### 4.1 ක්ෂේත්‍ර PHM ජංගම යෙදුම (Field Mobile App)
@@ -131,18 +140,24 @@ flowchart TD
 
 ```mermaid
 gantt
-    title දරුනැලි ව්‍යාපෘති ක්‍රියාත්මක කිරීමේ කාලසටහන (සති 12)
+    title දරුනැලි ජාතික MCH ව්‍යාපෘති ක්‍රියාත්මක කිරීමේ සවිස්තරාත්මක කාලසටහන (සති 12 ක සැලැස්ම)
     dateFormat  YYYY-MM-DD
-    section Phase 1: අවශ්‍යතා හා නිර්මාණය
-    අවශ්‍යතා විශ්ලේෂණය & Stakeholder Align      :p1, 2026-12-01, 14d
-    section Phase 2: හර පද්ධති සංවර්ධනය
-    Offline SQLite Mobile App & Sync Core       :p2, after p1, 21d
+    axisFormat  %b %d
+    section Phase 1: අවශ්‍යතා සහ නිර්මාණය
+    FHB ප්‍රමිතීන් හා අවශ්‍යතා අධ්‍යයනය          :done, p1_1, 2026-12-01, 7d
+    පද්ධති ගෘහ නිර්මාණ ලේඛනය (Architecture RFC)  :done, p1_2, after p1_1, 7d
+    section Phase 2: Core Mobile සංවර්ධනය
+    Offline SQLite Engine & React Native Base   :active, p2_1, after p1_2, 10d
+    WHO වර්ධන ප්‍රස්ථාර සහ EPI එන්නත් පද්ධතිය     :p2_2, after p2_1, 11d
     section Phase 3: Dashboard & Mother Portal
-    MOH Dashboard & Mother Companion Portal     :p3, after p2, 21d
-    section Phase 4: ආරක්ෂාව හා තත්ත්ව පරීක්ෂාව
-    Zod/Prisma Hardening & Penetration Testing  :p4, after p3, 14d
-    section Phase 5: නියමු යෙදවීම සහ පුහුණුව
-    MOH Pilot Rollout & PHM Field Training     :p5, after p4, 14d
+    MOH පරිපාලන උපකරණ පුවරුව (Next.js 14)       :p3_1, after p1_2, 12d
+    Mother Companion PWA & Cardiff Kick Tracker :p3_2, after p3_1, 9d
+    section Phase 4: ආරක්ෂාව සහ තත්ත්ව පරීක්ෂාව
+    Zod API Hardening & Prisma ORM Migration    :p4_1, after p2_2, 7d
+    HMAC Session Security & Penetration Testing :p4_2, after p4_1, 7d
+    section Phase 5: නියමු යෙදවීම සහ ක්ෂේත්‍ර පුහුණුව
+    MOH නියමු යෙදවීම (MOH Pilot Rollout)        :p5_1, after p4_2, 7d
+    PHM ක්ෂේත්‍ර පුහුණුව & පද්ධති භාරදීම          :p5_2, after p5_1, 7d
 ```
 
 | අදියර (Phase) | ප්‍රධාන ප්‍රතිදානයන් (Key Deliverables) | වගකිවයුතු භූමිකාව (Owner / Role) | ආරම්භය (Start) | ඉලක්කගත දිනය (Target) |

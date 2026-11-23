@@ -164,7 +164,26 @@ def build_full_html_document(html_body: str, title: str, css_styles: str) -> str
       startOnLoad: true,
       theme: 'neutral',
       securityLevel: 'loose',
-      fontFamily: 'Inter, system-ui, sans-serif'
+      fontFamily: 'Inter, "Noto Sans Sinhala", "Iskoola Pota", "Nirmala UI", sans-serif',
+      fontSize: 18,
+      flowchart: {{
+        useMaxWidth: false,
+        htmlLabels: true,
+        curve: 'basis',
+        nodeSpacing: 45,
+        rankSpacing: 45,
+        padding: 14
+      }},
+      gantt: {{
+        fontSize: 14,
+        sectionFontSize: 15,
+        numberSectionStyles: 5,
+        axisFormat: '%d/%m',
+        topPadding: 45,
+        bottomPadding: 45,
+        barHeight: 24,
+        barGap: 6
+      }}
     }});
   }}
 </script>
