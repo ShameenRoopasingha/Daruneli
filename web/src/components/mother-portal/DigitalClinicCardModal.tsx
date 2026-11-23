@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { QrCode, X, Sparkles, CheckCircle2 } from 'lucide-react';
-import { generateQrMatrix } from '@/lib/qrCodeMatrix';
+import { QrCode, X } from 'lucide-react';
+import QRCode from 'qrcode';
 import { useMotherPortal } from '@/lib/motherPortalI18n';
 
 interface DigitalClinicCardModalProps {
@@ -20,16 +20,26 @@ interface DigitalClinicCardModalProps {
 
 export function DigitalClinicCardModal({ mother, pogText }: DigitalClinicCardModalProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const { lang } = useMotherPortal();
 
-  // Generate QR Matrix
   const qrToken = mother.qrToken || 'MOTH-887654322V';
-  const matrix = useMemo(() => generateQrMatrix(qrToken), [qrToken]);
 
-  const size = matrix.length;
-  const cellSize = 7;
-  const padding = 14;
-  const svgDimension = size * cellSize + padding * 2;
+  useEffect(() => {
+    if (qrToken) {
+      QRCode.toDataURL(qrToken, {
+        margin: 1,
+        width: 260,
+        errorCorrectionLevel: 'M',
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF',
+        },
+      })
+        .then((url) => setQrDataUrl(url))
+        .catch((err) => console.error('Failed to generate clinic QR data URL:', err));
+    }
+  }, [qrToken]);
 
   // Localized texts
   const titles = {
@@ -135,29 +145,20 @@ export function DigitalClinicCardModal({ mother, pogText }: DigitalClinicCardMod
 
             {/* QR Code Container (Pure white background for maximum camera contrast) */}
             <div className="p-6 flex flex-col items-center">
-              <div className="p-3 bg-white rounded-2xl shadow-inner border border-gray-200 flex items-center justify-center">
-                <svg
-                  width={svgDimension}
-                  height={svgDimension}
-                  viewBox={`0 0 ${svgDimension} ${svgDimension}`}
-                  className="max-w-[220px] max-h-[220px] w-full h-auto"
-                >
-                  <rect width={svgDimension} height={svgDimension} fill="#FFFFFF" />
-                  {matrix.map((row, r) =>
-                    row.map((col, c) =>
-                      col ? (
-                        <rect
-                          key={`${r}-${c}`}
-                          x={padding + c * cellSize}
-                          y={padding + r * cellSize}
-                          width={cellSize}
-                          height={cellSize}
-                          fill="#000000"
-                        />
-                      ) : null
-                    )
-                  )}
-                </svg>
+              <div className="p-3 bg-white rounded-2xl shadow-inner border border-gray-200 flex items-center justify-center min-w-[220px] min-h-[220px]">
+                {qrDataUrl ? (
+                  <img
+                    src={qrDataUrl}
+                    alt={`Clinic QR ${qrToken}`}
+                    width={220}
+                    height={220}
+                    className="max-w-[220px] max-h-[220px] w-full h-auto block"
+                  />
+                ) : (
+                  <div className="w-[200px] h-[200px] flex items-center justify-center text-gray-400 text-xs">
+                    Generating QR code...
+                  </div>
+                )}
               </div>
 
               {/* Scannable Token Badge */}

@@ -9,12 +9,11 @@ import {
   ActivityIndicator,
   Modal,
 } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import QRCode from 'react-native-qrcode-svg';
 import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 import { RiskBadge } from '../RiskBadge';
 import { MotherWithPregnancy, updateFamilyGps, markMotherReturned } from '@/src/db/motherRepo';
-import { generateQrMatrix } from '@/src/utils/qrMatrix';
 import { COLORS, RADIUS, SHADOWS } from '@/src/theme';
 
 interface MotherProfileHeaderProps {
@@ -56,10 +55,6 @@ export const MotherProfileHeader: React.FC<MotherProfileHeaderProps> = ({
   const [isLocating, setIsLocating] = useState(false);
   const [isReturning, setIsReturning] = useState(false);
   const [showClinicQrModal, setShowClinicQrModal] = useState(false);
-
-  const qrMatrix = React.useMemo(() => {
-    return mother.qr_token ? generateQrMatrix(mother.qr_token) : [];
-  }, [mother.qr_token]);
 
   const motherAge = getAge(mother.dob);
   const isTempOut = mother.residency_status === 'TEMP_OUT';
@@ -310,33 +305,12 @@ export const MotherProfileHeader: React.FC<MotherProfileHeaderProps> = ({
               </View>
 
               <View style={styles.qrSvgWrapper}>
-                {qrMatrix.length > 0 && (
-                  <Svg
-                    width={200}
-                    height={200}
-                    viewBox={`0 0 ${qrMatrix.length * 7 + 28} ${qrMatrix.length * 7 + 28}`}
-                  >
-                    <Rect
-                      width={qrMatrix.length * 7 + 28}
-                      height={qrMatrix.length * 7 + 28}
-                      fill="#FFFFFF"
-                    />
-                    {qrMatrix.map((row, r) =>
-                      row.map((col, c) =>
-                        col ? (
-                          <Rect
-                            key={`${r}-${c}`}
-                            x={14 + c * 7}
-                            y={14 + r * 7}
-                            width={7}
-                            height={7}
-                            fill="#000000"
-                          />
-                        ) : null
-                      )
-                    )}
-                  </Svg>
-                )}
+                <QRCode
+                  value={mother.qr_token || 'MOTH-887654322V'}
+                  size={180}
+                  backgroundColor="#FFFFFF"
+                  color="#0F172A"
+                />
               </View>
 
               <View style={styles.qrModalTokenBadge}>

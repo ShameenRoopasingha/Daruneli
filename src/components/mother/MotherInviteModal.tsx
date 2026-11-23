@@ -10,8 +10,7 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
-import { generateQrMatrix } from '@/src/utils/qrMatrix';
+import QRCode from 'react-native-qrcode-svg';
 import { supabase } from '@/src/sync/supabaseClient';
 import { COLORS, SHADOWS } from '@/src/theme/tokens';
 
@@ -165,11 +164,6 @@ export const MotherInviteModal: React.FC<MotherInviteModalProps> = ({
     }
   };
 
-  // Render SVG QR Matrix
-  const matrix = inviteCode ? generateQrMatrix(portalUrl) : [];
-  const qrSize = 180;
-  const moduleSize = matrix.length > 0 ? qrSize / matrix.length : 6;
-
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -217,22 +211,12 @@ export const MotherInviteModal: React.FC<MotherInviteModalProps> = ({
                 {/* Scannable QR Code */}
                 <View style={styles.qrWrapper}>
                   <View style={styles.qrInner}>
-                    <Svg width={qrSize} height={qrSize}>
-                      {matrix.map((row, r) =>
-                        row.map((col, c) =>
-                          col ? (
-                            <Rect
-                              key={`${r}-${c}`}
-                              x={c * moduleSize}
-                              y={r * moduleSize}
-                              width={moduleSize}
-                              height={moduleSize}
-                              fill="#0F172A"
-                            />
-                          ) : null
-                        )
-                      )}
-                    </Svg>
+                    <QRCode
+                      value={portalUrl}
+                      size={180}
+                      backgroundColor="#FFFFFF"
+                      color="#0F172A"
+                    />
                   </View>
                   <Text style={styles.qrInstruction}>
                     Scan with camera to launch Mother Portal
