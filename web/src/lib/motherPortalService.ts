@@ -57,6 +57,8 @@ export interface MotherPortalData {
     dob: string; // DD/MM/YYYY
     ageMonths: number;
     birthWeightKg: number;
+    chdrNumber?: string;
+    bloodGroup?: string;
     growthRecords: Array<{
       monthAge: number;
       weightKg: number;

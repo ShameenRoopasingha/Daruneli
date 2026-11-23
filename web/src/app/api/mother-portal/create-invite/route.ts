@@ -28,12 +28,18 @@ export async function POST(req: NextRequest) {
     // Demo Mode fallback
     if (!isAdminConfigured()) {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      let code = 'DRN-74K';
+      if (motherId.includes('iresha') || motherId.includes('M5')) code = 'DRN-IRE';
+      else if (motherId.includes('nimali') || motherId.includes('M1')) code = 'DRN-NIM';
+      else if (motherId.includes('dilini') || motherId.includes('M4')) code = 'DRN-DIL';
+      else if (motherId.includes('kamala') || motherId.includes('M2')) code = 'DRN-KAM';
+
       return NextResponse.json({
         success: true,
         demo_mode: true,
-        invite_code: 'DRN-74K',
+        invite_code: code,
         expires_at: expiresAt,
-        qr_url: `/mother-portal/join?code=DRN-74K`,
+        qr_url: `/mother-portal/join?code=${code}`,
       });
     }
 

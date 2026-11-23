@@ -95,12 +95,12 @@ function JoinPortalForm() {
           'daruneli_mother_session',
           JSON.stringify({
             mother_name: data.mother_name,
+            mother_id: data.mother_id,
+            mother_nic: data.mother_nic,
             identifier: data.login_identifier,
             demo_mode: data.demo_mode ?? false,
           })
         );
-        document.cookie = `daruneli_mother_session=active; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
-        document.cookie = `daruneli_user_role=MOTHER; Path=/; Max-Age=${60 * 60 * 24 * 30}; SameSite=Lax`;
       }
 
       setTimeout(() => {

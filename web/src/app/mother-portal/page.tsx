@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Heart,
   Calendar,
@@ -14,33 +15,50 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useMotherPortal } from '@/lib/motherPortalI18n';
-import { DEMO_MOTHER_PORTAL_DATA, MotherPortalData } from '@/lib/motherPortalService';
+import { MotherPortalData } from '@/lib/motherPortalService';
 import { DigitalClinicCardModal } from '@/components/mother-portal/DigitalClinicCardModal';
 
 export default function MotherHomePage() {
+  const router = useRouter();
   const { t } = useMotherPortal();
-  const [data, setData] = useState<MotherPortalData>(DEMO_MOTHER_PORTAL_DATA);
+  const [data, setData] = useState<MotherPortalData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if session has mother profile or fetch from API
-    if (typeof window !== 'undefined') {
-      const savedSession = localStorage.getItem('daruneli_mother_session');
-      if (savedSession) {
-        try {
-          const parsed = JSON.parse(savedSession);
-          if (parsed.mother_name) {
-            setData((prev) => ({
-              ...prev,
-              mother: {
-                ...prev.mother,
-                fullName: parsed.mother_name,
-              },
-            }));
-          }
-        } catch {}
+    let isMounted = true;
+    async function loadPortal() {
+      try {
+        const res = await fetch('/api/mother-portal/me');
+        if (res.status === 401) {
+          router.push('/mother-portal/login');
+          return;
+        }
+        const json = await res.json();
+        if (json.success && json.data && isMounted) {
+          setData(json.data);
+        }
+      } catch (err) {
+        console.error('Failed to load mother profile:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
     }
-  }, []);
+    loadPortal();
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  if (loading || !data) {
+    return (
+      <div className="py-24 text-center">
+        <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          Loading your maternal care profile...
+        </p>
+      </div>
+    );
+  }
 
   const { mother, pregnancy, upcomingSchedule, phmContact, latestVitals } = data;
 

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Baby,
   Syringe,
@@ -22,15 +23,87 @@ import {
   ReferenceArea,
 } from 'recharts';
 import { useMotherPortal } from '@/lib/motherPortalI18n';
-import { DEMO_MOTHER_PORTAL_DATA } from '@/lib/motherPortalService';
+import { MotherPortalData } from '@/lib/motherPortalService';
 
 export default function MotherChildPage() {
+  const router = useRouter();
   const { t } = useMotherPortal();
+  const [children, setChildren] = useState<MotherPortalData['children']>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedChildIndex, setSelectedChildIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'VACCINES' | 'GROWTH'>('VACCINES');
 
-  const children = DEMO_MOTHER_PORTAL_DATA.children;
-  const currentChild = children[selectedChildIndex];
+  useEffect(() => {
+    let isMounted = true;
+    async function loadChildData() {
+      try {
+        const res = await fetch('/api/mother-portal/me');
+        if (res.status === 401) {
+          router.push('/mother-portal/login');
+          return;
+        }
+        const json = await res.json();
+        if (json.success && json.data && isMounted) {
+          setChildren(json.data.children || []);
+        }
+      } catch (err) {
+        console.error('Error fetching child records:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadChildData();
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  if (loading) {
+    return (
+      <div className="py-24 text-center">
+        <div className="w-10 h-10 border-4 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+          Loading Child Health Development Records (CHDR)...
+        </p>
+      </div>
+    );
+  }
+
+  if (!children || children.length === 0) {
+    return (
+      <div className="space-y-4 pt-1 animate-in fade-in duration-300">
+        <div>
+          <h1 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+            <Baby className="w-5 h-5 text-teal-600" />
+            <span>{t.baby.title}</span>
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {t.baby.subtitle}
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200/80 dark:border-slate-800 text-center shadow-sm">
+          <div className="w-16 h-16 rounded-3xl bg-teal-50 dark:bg-teal-950/80 text-teal-600 flex items-center justify-center mx-auto mb-4 text-3xl">
+            👶
+          </div>
+          <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
+            Current Pregnancy in Progress
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto mt-2 leading-relaxed">
+            No previous child records (CHDR) are on file. Once your baby is born and registered by the hospital and area PHM, digital immunization and growth charts will automatically appear here!
+          </p>
+          <div className="mt-5 p-3.5 bg-teal-50 dark:bg-teal-950/40 rounded-2xl border border-teal-100 dark:border-teal-900 text-left text-xs text-teal-900 dark:text-teal-200 flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+            <span>
+              National Immunization Schedule (EPI) and CHDR curves follow official Sri Lanka Ministry of Health & FHB clinical guidelines.
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const currentChild = children[selectedChildIndex] || children[0];
 
   // CHDR Weight-for-Age curve data formatted for Recharts
   const growthChartData = currentChild.growthRecords.map((r) => ({

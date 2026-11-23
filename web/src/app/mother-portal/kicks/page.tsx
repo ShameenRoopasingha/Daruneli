@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Activity,
   RotateCcw,
@@ -12,19 +13,48 @@ import {
   Phone,
 } from 'lucide-react';
 import { useMotherPortal } from '@/lib/motherPortalI18n';
-import { DEMO_MOTHER_PORTAL_DATA } from '@/lib/motherPortalService';
+import { MotherPortalData } from '@/lib/motherPortalService';
 import { formatDate } from '@/lib/dateFormat';
 
 export default function MotherKicksPage() {
+  const router = useRouter();
   const { t } = useMotherPortal();
   const [kickCount, setKickCount] = useState(0);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isWorried, setIsWorried] = useState(false);
-  const [history, setHistory] = useState(DEMO_MOTHER_PORTAL_DATA.kickLogs);
+  const [phmPhone, setPhmPhone] = useState('0714567890');
+  const [history, setHistory] = useState<MotherPortalData['kickLogs']>([]);
 
   const todayDmy = formatDate(new Date());
+
+  // Load kick history from server
+  useEffect(() => {
+    let isMounted = true;
+    async function loadKickHistory() {
+      try {
+        const res = await fetch('/api/mother-portal/me');
+        if (res.status === 401) {
+          router.push('/mother-portal/login');
+          return;
+        }
+        const json = await res.json();
+        if (json.success && json.data && isMounted) {
+          setHistory(json.data.kickLogs || []);
+          if (json.data.phmContact?.phone) {
+            setPhmPhone(json.data.phmContact.phone);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load kick logs:', err);
+      }
+    }
+    loadKickHistory();
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
 
   // Load active session from localStorage
   useEffect(() => {
@@ -186,7 +216,7 @@ export default function MotherKicksPage() {
               Call 1990 Ambulance
             </a>
             <a
-              href={`tel:${DEMO_MOTHER_PORTAL_DATA.phmContact.phone}`}
+              href={`tel:${phmPhone}`}
               className="flex-1 py-2 rounded-xl bg-white dark:bg-slate-800 border border-rose-300 text-rose-800 dark:text-rose-200 font-bold text-xs text-center flex items-center justify-center gap-1"
             >
               <Phone className="w-3.5 h-3.5" />

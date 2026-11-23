@@ -5,7 +5,7 @@ const SUPERVISOR_ROUTES = ['/escalations', '/reports', '/supervision', '/areas',
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // 1. Bypass static assets, API routes, manifest, and images
+  // 1. Bypass static assets, API routes, manifest, and public images
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -17,21 +17,20 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check demo mode setting or cookies
-  const isDemo =
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL === 'https://your-project.supabase.co';
-
   const motherSessionCookie = req.cookies.get('daruneli_mother_session')?.value;
   const supervisorSessionCookie = req.cookies.get('daruneli_supervisor_session')?.value;
   const userRoleCookie = req.cookies.get('daruneli_user_role')?.value;
+
+  const isMotherSessionActive = Boolean(
+    motherSessionCookie && motherSessionCookie.length > 20 && motherSessionCookie.includes('.')
+  );
 
   // 2. Role Isolation: If user is MOTHER, block from MOH/PHNS supervisor routes
   const isSupervisorRoute =
     pathname === '/' || SUPERVISOR_ROUTES.some((route) => pathname.startsWith(route));
 
   if (isSupervisorRoute) {
-    if (userRoleCookie === 'MOTHER' || (motherSessionCookie && !supervisorSessionCookie)) {
+    if (userRoleCookie === 'MOTHER' || (isMotherSessionActive && !supervisorSessionCookie)) {
       const url = req.nextUrl.clone();
       url.pathname = '/mother-portal';
       return NextResponse.redirect(url);
@@ -44,18 +43,22 @@ export async function middleware(req: NextRequest) {
       pathname === '/mother-portal/join' ||
       pathname === '/mother-portal/login';
 
-    if (!isPublicPortalRoute && !isDemo) {
-      // In production mode with Supabase configured, ensure mother session exists
-      const hasAuth =
-        motherSessionCookie ||
-        req.cookies.getAll().some((c) => c.name.startsWith('sb-') && c.name.endsWith('-auth-token'));
-
-      if (!hasAuth) {
+    if (isPublicPortalRoute) {
+      // If already logged in as Mother, redirect to portal home
+      if (isMotherSessionActive) {
         const url = req.nextUrl.clone();
-        url.pathname = '/mother-portal/login';
-        url.searchParams.set('redirect', pathname);
+        url.pathname = '/mother-portal';
         return NextResponse.redirect(url);
       }
+      return NextResponse.next();
+    }
+
+    // Protected portal routes require active mother session
+    if (!isMotherSessionActive) {
+      const url = req.nextUrl.clone();
+      url.pathname = '/mother-portal/login';
+      url.searchParams.set('redirect', pathname);
+      return NextResponse.redirect(url);
     }
   }
 

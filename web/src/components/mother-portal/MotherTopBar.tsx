@@ -17,11 +17,14 @@ export const MotherTopBar: React.FC = () => {
     return null;
   }
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await fetch('/api/mother-portal/logout', { method: 'POST' });
+    } catch {}
     if (typeof window !== 'undefined') {
       localStorage.removeItem('daruneli_mother_session');
-      document.cookie = 'daruneli_mother_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-      document.cookie = 'daruneli_user_role=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+      localStorage.removeItem('daruneli_active_kick_session');
+      localStorage.removeItem('daruneli_hospital_bag_checks');
     }
     router.push('/mother-portal/login');
   };

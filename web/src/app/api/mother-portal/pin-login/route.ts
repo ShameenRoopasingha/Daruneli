@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient, isAdminConfigured } from '@/lib/supabaseAdmin';
-import { deriveMotherPassword } from '@/lib/motherAuthUtils';
+import {
+  deriveMotherPassword,
+  sanitizeIdentifier,
+  signMotherSessionToken,
+} from '@/lib/motherAuthUtils';
+import {
+  findDemoMother,
+  verifyDemoMotherCredentials,
+  getDemoMotherPortalData,
+} from '@/lib/demoMothers';
 
-// In-memory rate limiting map: identifier -> { attempts, lockedUntil }
+// In-memory rate limiting map: ip:identifier -> { attempts, resetAt }
 const rateLimitMap = new Map<string, { attempts: number; resetAt: number }>();
 
 function checkRateLimit(key: string): boolean {
@@ -30,74 +39,183 @@ function clearRateLimit(key: string) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const identifier = String(body.identifier || '').trim();
+    const rawIdentifier = String(body.identifier || '').trim();
     const pin = String(body.pin || '').trim();
-    const ip = req.headers.get('x-forwarded-for') || 'unknown';
-    const rateLimitKey = `${ip}:${identifier.toLowerCase()}`;
+    const isExplicitDemo = body.is_demo === true;
 
-    if (!identifier || !/^\d{4}$/.test(pin)) {
+    // 1. Strict Input Sanitization
+    const sanitizedId = sanitizeIdentifier(rawIdentifier);
+    if (!isExplicitDemo && (!sanitizedId || !/^\d{4}$/.test(pin))) {
       return NextResponse.json(
-        { success: false, message: 'Please provide your registered Phone/NIC and 4-digit PIN.' },
+        {
+          success: false,
+          message: 'Please provide a valid registered Phone/NIC and 4-digit PIN.',
+        },
         { status: 400 }
       );
     }
 
-    if (!checkRateLimit(rateLimitKey)) {
+    const ip = req.headers.get('x-forwarded-for') || 'unknown';
+    const rateLimitKey = `${ip}:${(sanitizedId || 'demo').toLowerCase()}`;
+
+    if (!isExplicitDemo && !checkRateLimit(rateLimitKey)) {
       return NextResponse.json(
         {
           success: false,
-          message: 'Too many failed login attempts. For patient safety, this account is temporarily locked for 15 minutes.',
+          message:
+            'Too many failed login attempts. For patient safety, this account is temporarily locked for 15 minutes.',
         },
         { status: 429 }
       );
     }
 
-    // Demo Mode handling
-    if (!isAdminConfigured() || body.is_demo === true) {
+    // 2. Demo Mode Handling (Offline / Unconfigured Supabase)
+    if (!isAdminConfigured() || isExplicitDemo) {
+      if (isExplicitDemo) {
+        // Explicit 1-tap demo portal button
+        clearRateLimit(rateLimitKey);
+        const demoTarget = findDemoMother(sanitizedId || '0771234567') || findDemoMother('0771234567')!;
+        const sessionToken = signMotherSessionToken({
+          mother_id: demoTarget.id,
+          mother_name: demoTarget.fullName,
+          nic: demoTarget.nic,
+          phone: demoTarget.phone,
+          is_demo: true,
+        });
+
+        const res = NextResponse.json({
+          success: true,
+          demo_mode: true,
+          mother_name: demoTarget.fullName,
+          mother_id: demoTarget.id,
+          mother_nic: demoTarget.nic,
+          mother_phone: demoTarget.phone,
+          message: `Signed in to demo portal as ${demoTarget.fullName}.`,
+        });
+
+        res.cookies.set('daruneli_mother_session', sessionToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 60 * 60 * 24 * 30,
+        });
+
+        res.cookies.set('daruneli_user_role', 'MOTHER', {
+          httpOnly: false,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 60 * 60 * 24 * 30,
+        });
+
+        return res;
+      }
+
+      // Credential-based login in Demo Mode: MUST VERIFY CREDENTIALS
+      const verification = verifyDemoMotherCredentials(sanitizedId!, pin);
+      if (!verification.success || !verification.mother) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: verification.message || 'Invalid Phone/NIC or 4-digit PIN.',
+          },
+          { status: 401 }
+        );
+      }
+
       clearRateLimit(rateLimitKey);
-      return NextResponse.json({
+      const verifiedMother = verification.mother;
+
+      const sessionToken = signMotherSessionToken({
+        mother_id: verifiedMother.id,
+        mother_name: verifiedMother.fullName,
+        nic: verifiedMother.nic,
+        phone: verifiedMother.phone,
+        is_demo: true,
+      });
+
+      const res = NextResponse.json({
         success: true,
         demo_mode: true,
-        mother_name: 'Inoka Dilhani',
-        mother_id: 'moth_demo_001',
-        message: 'Signed in to Mother Companion Portal (Demo Mode).',
+        mother_name: verifiedMother.fullName,
+        mother_id: verifiedMother.id,
+        mother_nic: verifiedMother.nic,
+        mother_phone: verifiedMother.phone,
+        message: `Signed in as ${verifiedMother.fullName}.`,
       });
+
+      res.cookies.set('daruneli_mother_session', sessionToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30,
+      });
+
+      res.cookies.set('daruneli_user_role', 'MOTHER', {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30,
+      });
+
+      return res;
     }
 
+    // 3. Supabase Production Mode
     const admin = getAdminClient();
 
-    // 1. Look up mother by phone or NIC
-    const cleanId = identifier.replace(/[^A-Za-z0-9]/g, '');
-    const { data: mothers, error: motherErr } = await admin
+    // Look up mother by phone or NIC with safe parameterized eq filters
+    const cleanId = sanitizedId!.replace(/[^A-Za-z0-9]/g, '');
+    let motherQuery = admin
       .from('mothers')
       .select('id, full_name, nic, phone, phm_area_id, auth_user_id')
-      .or(`phone.eq.${identifier},nic.ilike.${cleanId},nic.ilike.${identifier}`)
-      .limit(1);
+      .eq('phone', sanitizedId);
 
-    if (motherErr || !mothers || mothers.length === 0) {
+    const { data: phoneMatch } = await motherQuery.limit(1);
+
+    let mother = phoneMatch && phoneMatch.length > 0 ? phoneMatch[0] : null;
+
+    if (!mother) {
+      const { data: nicMatch, error: nicErr } = await admin
+        .from('mothers')
+        .select('id, full_name, nic, phone, phm_area_id, auth_user_id')
+        .ilike('nic', cleanId)
+        .limit(1);
+
+      if (!nicErr && nicMatch && nicMatch.length > 0) {
+        mother = nicMatch[0];
+      }
+    }
+
+    if (!mother) {
       return NextResponse.json(
-        { success: false, message: 'Invalid credentials. If this is your first time, please use the invite code from your midwife.' },
+        {
+          success: false,
+          message:
+            'Invalid credentials. If this is your first time, please use the invite code from your midwife.',
+        },
         { status: 401 }
       );
     }
-
-    const mother = mothers[0];
 
     if (!mother.auth_user_id) {
       return NextResponse.json(
         {
           success: false,
-          message: 'This account has not been activated yet. Please click "Claim Invite" and enter your 6-digit invite code.',
+          message:
+            'This account has not been activated yet. Please click "Claim Invite" and enter your 6-digit invite code.',
         },
         { status: 400 }
       );
     }
 
-    // 2. Validate PIN via synthetic email and deterministic password
+    // Validate PIN via synthetic email and deterministic password
     const syntheticEmail = `mother_${mother.id.replace(/-/g, '')}@portal.daruneli.lk`;
     const password = deriveMotherPassword(mother.id, pin);
 
-    // Verify against Supabase Auth
     const { data: authData, error: authError } = await admin.auth.signInWithPassword({
       email: syntheticEmail,
       password,
@@ -112,12 +230,39 @@ export async function POST(req: NextRequest) {
 
     clearRateLimit(rateLimitKey);
 
-    return NextResponse.json({
+    const sessionToken = signMotherSessionToken({
+      mother_id: mother.id,
+      mother_name: mother.full_name,
+      nic: mother.nic,
+      phone: mother.phone,
+      is_demo: false,
+    });
+
+    const res = NextResponse.json({
       success: true,
       mother_name: mother.full_name,
       mother_id: mother.id,
+      mother_nic: mother.nic,
       session: authData.session,
     });
+
+    res.cookies.set('daruneli_mother_session', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    res.cookies.set('daruneli_user_role', 'MOTHER', {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    return res;
   } catch (err: any) {
     console.error('Mother portal login error:', err);
     return NextResponse.json(
