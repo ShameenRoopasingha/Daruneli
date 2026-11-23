@@ -13,6 +13,9 @@ import {
 import Svg, { Rect, Line, Text as SvgText, G } from 'react-native-svg';
 import { analyzeCardiffKickCount, KickLogInput } from '../../engine/chartAnalyzers';
 import { addKickLog } from '../../db/clinicalChartRepo';
+import { ChartZoomModal } from './ChartZoomModal';
+import { RADIUS, SHADOWS } from '../../theme';
+import { formatDMY } from './GestationalWheelTool';
 
 interface CardiffKickChartProps {
   pregnancyId: string;
@@ -28,6 +31,9 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
   poaWeeks,
 }) => {
   const [isLogModalVisible, setIsLogModalVisible] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<KickLogInput | null>(null);
+
   const [logDate, setLogDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [startTime, setStartTime] = useState('09:00');
   const [tenthKickTime, setTenthKickTime] = useState('11:30');
@@ -37,26 +43,15 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
 
   const analysis = analyzeCardiffKickCount(kickLogs);
 
-  // Take the last 7 to 14 days sorted ascending
+  // Take the last 14 logs sorted ascending
   const displayLogs = [...kickLogs]
     .sort((a, b) => (a.logDate || a.log_date || '').localeCompare(b.logDate || b.log_date || ''))
-    .slice(-10);
+    .slice(-14);
 
   const screenWidth = Dimensions.get('window').width;
-  const chartWidth = screenWidth - 32;
-  const chartHeight = 180;
-
-  const padLeft = 38;
-  const padRight = 16;
-  const padTop = 18;
-  const padBottom = 26;
-
-  const plotW = chartWidth - padLeft - padRight;
-  const plotH = chartHeight - padTop - padBottom;
-
-  // Max duration up to 14 hours (840 minutes) for chart scale
-  const maxMinutes = 840;
-  const getY = (mins: number) => padTop + plotH - (Math.min(maxMinutes, mins) / maxMinutes) * plotH;
+  const defaultWidth = Math.max(300, screenWidth - 32);
+  const defaultHeight = 180;
+  const maxMinutes = 840; // 14 hours
 
   const calculateMinutesBetween = (start: string, end: string): number => {
     try {
@@ -111,13 +106,149 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
     performSave();
   };
 
-  const barWidth = Math.max(16, Math.min(28, (plotW / (displayLogs.length || 1)) - 8));
+  const renderKickSvg = (width: number, height: number, interactive = false) => {
+    const padLeft = 38;
+    const padRight = 16;
+    const padTop = 18;
+    const padBottom = 26;
+
+    const plotW = width - padLeft - padRight;
+    const plotH = height - padTop - padBottom;
+
+    const getY = (mins: number) => padTop + plotH - (Math.min(maxMinutes, mins) / maxMinutes) * plotH;
+    const barWidth = Math.max(18, Math.min(36, (plotW / (displayLogs.length || 1)) - 8));
+
+    return (
+      <Svg width={width} height={height}>
+        {/* Safe 12-Hour Limit Reference Line (720 min) */}
+        <Line
+          x1={padLeft}
+          y1={getY(720)}
+          x2={width - padRight}
+          y2={getY(720)}
+          stroke="#EF4444"
+          strokeWidth={1.5}
+          strokeDasharray="4, 3"
+        />
+        <SvgText
+          x={width - padRight - 4}
+          y={getY(720) - 4}
+          fontSize={9}
+          fontWeight="bold"
+          fill="#EF4444"
+          textAnchor="end"
+        >
+          12h Red Alert Limit
+        </SvgText>
+
+        {/* Grid Lines for 2h, 4h, 8h, 12h */}
+        {[120, 240, 480, 720].map((mins) => {
+          const y = getY(mins);
+          const hrs = mins / 60;
+          return (
+            <G key={`kick-grid-${mins}`}>
+              <Line
+                x1={padLeft}
+                y1={y}
+                x2={width - padRight}
+                y2={y}
+                stroke="#F1F5F9"
+                strokeWidth={1}
+              />
+              <SvgText
+                x={padLeft - 6}
+                y={y + 4}
+                fontSize={10}
+                fontWeight="600"
+                fill="#64748B"
+                textAnchor="end"
+              >
+                {hrs}h
+              </SvgText>
+            </G>
+          );
+        })}
+
+        {/* Bars for Each Day */}
+        {displayLogs.map((log, i) => {
+          const count = displayLogs.length;
+          const spacing = plotW / count;
+          const x = padLeft + i * spacing + (spacing - barWidth) / 2;
+          const duration = log.durationMinutes ?? log.duration_minutes ?? 120;
+          const isReduced =
+            (log.reducedMovementFlag ?? log.reduced_movement_flag ?? 0) === 1 ||
+            duration > 720 ||
+            (log.kickCount ?? log.kick_count ?? 10) < 10;
+          const barH = Math.min(plotH, (duration / maxMinutes) * plotH);
+          const y = padTop + plotH - barH;
+
+          const dateVal = log.logDate || log.log_date || '';
+          const dayStr = dateVal.slice(8, 10);
+          const monthStr = dateVal.slice(5, 7);
+          const isSelected = selectedLog?.log_date === (log.logDate || log.log_date);
+
+          return (
+            <G
+              key={`kick-bar-${i}`}
+              onPress={() => interactive && setSelectedLog(log)}
+            >
+              <Rect
+                x={x}
+                y={y}
+                width={barWidth}
+                height={barH}
+                rx={4}
+                fill={isReduced ? '#EF4444' : '#10B981'}
+                stroke={isSelected ? '#0F172A' : 'none'}
+                strokeWidth={isSelected ? 2 : 0}
+              />
+              {/* Top value in hours */}
+              <SvgText
+                x={x + barWidth / 2}
+                y={Math.max(padTop + 10, y - 4)}
+                fontSize={isSelected ? 10 : 8}
+                fontWeight="bold"
+                fill="#1E293B"
+                textAnchor="middle"
+              >
+                {Math.round(duration / 60)}h
+              </SvgText>
+              {/* Bottom date label */}
+              <SvgText
+                x={x + barWidth / 2}
+                y={height - padBottom + 14}
+                fontSize={9}
+                fontWeight="600"
+                fill="#64748B"
+                textAnchor="middle"
+              >
+                {`${dayStr}/${monthStr}`}
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    );
+  };
+
+  const renderLegend = () => (
+    <View style={styles.footerRow}>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#10B981' }]} />
+        <Text style={styles.legendText}>Normal (&lt; 12h)</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#EF4444' }]} />
+        <Text style={styles.legendText}>Reduced Movement (&gt; 12h)</Text>
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, marginRight: 8 }}>
           <View style={styles.badgeRow}>
             <Text style={styles.title}>Cardiff Count-to-10 Kick Chart</Text>
             {typeof poaWeeks === 'number' && poaWeeks >= 28 && (
@@ -130,12 +261,23 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
             දරු චලන සටහන් පත්‍රිකාව • Daily time taken to reach 10 kicks
           </Text>
         </View>
-        <TouchableOpacity
-          style={styles.logBtn}
-          onPress={() => setIsLogModalVisible(true)}
-        >
-          <Text style={styles.logBtnText}>+ Log Kicks</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {displayLogs.length > 0 && (
+            <TouchableOpacity
+              style={styles.expandBtn}
+              onPress={() => setIsFullscreen(true)}
+              accessibilityLabel="Expand kick chart"
+            >
+              <Text style={styles.expandBtnText}>🔍 Zoom</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={styles.logBtn}
+            onPress={() => setIsLogModalVisible(true)}
+          >
+            <Text style={styles.logBtnText}>+ Log</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Clinical Warning Banner if Reduced Movements */}
@@ -166,129 +308,17 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🦶</Text>
           <Text style={styles.emptyText}>
-            No kick recordings logged yet. Tap &quot;+ Log Kicks&quot; to start daily tracking.
+            No kick recordings logged yet. Tap &quot;+ Log&quot; to start daily tracking.
           </Text>
         </View>
       ) : (
         <View style={styles.svgWrapper}>
-          <Svg width={chartWidth} height={chartHeight}>
-            {/* Safe 12-Hour Limit Reference Line (720 min) */}
-            <Line
-              x1={padLeft}
-              y1={getY(720)}
-              x2={chartWidth - padRight}
-              y2={getY(720)}
-              stroke="#EF4444"
-              strokeWidth={1.5}
-              strokeDasharray="4, 3"
-            />
-            <SvgText
-              x={chartWidth - padRight - 4}
-              y={getY(720) - 4}
-              fontSize={9}
-              fontWeight="bold"
-              fill="#EF4444"
-              textAnchor="end"
-            >
-              12h Red Alert Limit
-            </SvgText>
-
-            {/* Grid Lines for 2h, 4h, 8h, 12h */}
-            {[120, 240, 480, 720].map((mins) => {
-              const y = getY(mins);
-              const hrs = mins / 60;
-              return (
-                <G key={`kick-grid-${mins}`}>
-                  <Line
-                    x1={padLeft}
-                    y1={y}
-                    x2={chartWidth - padRight}
-                    y2={y}
-                    stroke="#F1F5F9"
-                    strokeWidth={1}
-                  />
-                  <SvgText
-                    x={padLeft - 6}
-                    y={y + 4}
-                    fontSize={10}
-                    fontWeight="600"
-                    fill="#64748B"
-                    textAnchor="end"
-                  >
-                    {hrs}h
-                  </SvgText>
-                </G>
-              );
-            })}
-
-            {/* Bars for Each Day */}
-            {displayLogs.map((log, i) => {
-              const count = displayLogs.length;
-              const spacing = plotW / count;
-              const x = padLeft + i * spacing + (spacing - barWidth) / 2;
-              const duration = log.durationMinutes ?? log.duration_minutes ?? 120;
-              const isReduced =
-                (log.reducedMovementFlag ?? log.reduced_movement_flag ?? 0) === 1 ||
-                duration > 720 ||
-                (log.kickCount ?? log.kick_count ?? 10) < 10;
-              const barH = Math.min(plotH, (duration / maxMinutes) * plotH);
-              const y = padTop + plotH - barH;
-
-              // Format date day/month
-              const dateVal = log.logDate || log.log_date || '';
-              const dayStr = dateVal.slice(8, 10);
-              const monthStr = dateVal.slice(5, 7);
-
-              return (
-                <G key={`kick-bar-${i}`}>
-                  <Rect
-                    x={x}
-                    y={y}
-                    width={barWidth}
-                    height={barH}
-                    rx={4}
-                    fill={isReduced ? '#EF4444' : '#10B981'}
-                  />
-                  {/* Top value in hours */}
-                  <SvgText
-                    x={x + barWidth / 2}
-                    y={Math.max(padTop + 10, y - 4)}
-                    fontSize={8}
-                    fontWeight="bold"
-                    fill="#1E293B"
-                    textAnchor="middle"
-                  >
-                    {Math.round(duration / 60)}h
-                  </SvgText>
-                  {/* Bottom date label */}
-                  <SvgText
-                    x={x + barWidth / 2}
-                    y={chartHeight - padBottom + 14}
-                    fontSize={9}
-                    fontWeight="600"
-                    fill="#64748B"
-                    textAnchor="middle"
-                  >
-                    {`${dayStr}/${monthStr}`}
-                  </SvgText>
-                </G>
-              );
-            })}
-          </Svg>
+          {renderKickSvg(defaultWidth, defaultHeight, false)}
         </View>
       )}
 
       {/* Legend & Stats */}
-      <View style={styles.footerRow}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: '#10B981' }]} />
-          <Text style={styles.legendText}>Normal (&lt; 12h)</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: '#EF4444' }]} />
-          <Text style={styles.legendText}>Reduced Movement (&gt; 12h)</Text>
-        </View>
-      </View>
+      {displayLogs.length > 0 && renderLegend()}
 
       {/* Log Modal */}
       <Modal visible={isLogModalVisible} animationType="slide" transparent>
@@ -307,12 +337,12 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
                 style={styles.input}
                 value={logDate}
                 onChangeText={setLogDate}
-                placeholder="YYYY-MM-DD"
+                placeholder="2026-11-23"
               />
 
               <View style={styles.rowInputs}>
                 <View style={{ flex: 1, marginRight: 8 }}>
-                  <Text style={styles.formLabel}>Start Time</Text>
+                  <Text style={styles.formLabel}>Start Time (HH:MM)</Text>
                   <TextInput
                     style={styles.input}
                     value={startTime}
@@ -321,7 +351,7 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.formLabel}>10th Kick Time</Text>
+                  <Text style={styles.formLabel}>10th Kick Time (HH:MM)</Text>
                   <TextInput
                     style={styles.input}
                     value={tenthKickTime}
@@ -331,12 +361,13 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
                 </View>
               </View>
 
-              <Text style={styles.formLabel}>Kicks Counted</Text>
+              <Text style={styles.formLabel}>Kick Count Reached</Text>
               <TextInput
                 style={styles.input}
                 value={kickCount}
                 onChangeText={setKickCount}
                 keyboardType="numeric"
+                placeholder="10"
               />
 
               <TouchableOpacity
@@ -347,23 +378,57 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
                   {reducedFlag && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.checkboxLabel}>
-                  Mother reported reduced / weak fetal movement today
+                  Mother reported reduced / weak fetal movements today (අඩු වූ චලන)
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
+                style={styles.saveBtn}
                 onPress={handleSaveLog}
                 disabled={isSaving}
               >
                 <Text style={styles.saveBtnText}>
-                  {isSaving ? 'Saving...' : 'Save Kick Log'}
+                  {isSaving ? 'Saving Record...' : 'Save Kick Record'}
                 </Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
       </Modal>
+
+      {/* Zoom Modal */}
+      {isFullscreen && (
+        <ChartZoomModal
+          visible={isFullscreen}
+          onClose={() => {
+            setIsFullscreen(false);
+            setSelectedLog(null);
+          }}
+          title="Cardiff Count-to-10 Fetal Kicks"
+          subtitle="දරු චලන සටහන් පත්‍රිකාව • Daily Kick Duration"
+          badgeText="Cardiff Standard"
+          baseWidth={screenWidth - 24}
+          baseHeight={260}
+          initialScale={1.5}
+          renderChart={(_scale, w, h) => renderKickSvg(w, h, true)}
+          legend={renderLegend()}
+          extraContent={
+            selectedLog && (
+              <View style={styles.selectedPointCard}>
+                <Text style={styles.selectedPointTitle}>📍 තෝරාගත් දින සටහන (Selected Record)</Text>
+                <Text style={styles.selectedPointDetails}>
+                  දිනය: <Text style={{ fontWeight: '700' }}>{formatDMY(selectedLog.logDate || selectedLog.log_date || '')}</Text> • 
+                  ආරම්භය: <Text style={{ fontWeight: '700' }}>{selectedLog.startTime || selectedLog.start_time || '-'}</Text> • 
+                  10 වන චලනය: <Text style={{ fontWeight: '700' }}>{selectedLog.tenthKickTime || selectedLog.tenth_kick_time || '-'}</Text> • 
+                  ගත වූ කාලය: <Text style={{ fontWeight: '800', color: (selectedLog.durationMinutes || selectedLog.duration_minutes || 0) > 720 ? '#EF4444' : '#10B981' }}>
+                    {Math.round(((selectedLog.durationMinutes || selectedLog.duration_minutes || 0) / 60) * 10) / 10} පැය
+                  </Text>
+                </Text>
+              </View>
+            )
+          }
+        />
+      )}
     </View>
   );
 };
@@ -376,6 +441,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     marginBottom: 16,
+    ...SHADOWS.card,
   },
   headerRow: {
     flexDirection: 'row',
@@ -390,33 +456,50 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
   },
   activePill: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#10B981',
+    borderWidth: 1,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#86EFAC',
   },
   activePillText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#15803D',
+    color: '#047857',
   },
   subtitle: {
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
   },
+  expandBtn: {
+    backgroundColor: '#F0FDFA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    minHeight: 34,
+    justifyContent: 'center',
+  },
+  expandBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F766E',
+  },
   logBtn: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0F766E',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 4,
+    borderRadius: RADIUS.md,
+    minHeight: 34,
+    justifyContent: 'center',
   },
   logBtnText: {
     fontSize: 11,
@@ -427,41 +510,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 8,
     marginBottom: 10,
-    borderWidth: 1,
     gap: 8,
   },
   alertNormal: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+    borderWidth: 1,
   },
   alertDanger: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
+    borderWidth: 1,
   },
   alertIcon: {
     fontSize: 16,
-    fontWeight: 'bold',
   },
   alertTextEn: {
     fontSize: 12,
     fontWeight: '700',
   },
-  textNormal: {
-    color: '#15803D',
-  },
-  textDanger: {
-    color: '#B91C1C',
-  },
   alertTextSi: {
     fontSize: 11,
     color: '#475569',
-    marginTop: 2,
+    marginTop: 1,
+  },
+  textNormal: {
+    color: '#065F46',
+  },
+  textDanger: {
+    color: '#991B1B',
   },
   emptyContainer: {
-    alignItems: 'center',
     paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyIcon: {
     fontSize: 28,
@@ -471,7 +555,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     textAlign: 'center',
-    maxWidth: 240,
+    paddingHorizontal: 16,
   },
   svgWrapper: {
     alignItems: 'center',
@@ -480,7 +564,7 @@ const styles = StyleSheet.create({
   },
   footerRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 16,
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
@@ -489,7 +573,7 @@ const styles = StyleSheet.create({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   legendBox: {
     width: 12,
@@ -497,7 +581,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   legendText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#475569',
     fontWeight: '600',
   },
@@ -596,5 +680,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  selectedPointCard: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  selectedPointTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F766E',
+    marginBottom: 2,
+  },
+  selectedPointDetails: {
+    fontSize: 12,
+    color: '#1E293B',
   },
 });

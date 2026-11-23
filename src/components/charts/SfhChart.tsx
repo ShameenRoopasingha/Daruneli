@@ -4,9 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Modal,
   Dimensions,
-  ScrollView,
 } from 'react-native';
 import Svg, { Path, Circle, Line, Text as SvgText, G } from 'react-native-svg';
 import {
@@ -14,6 +12,8 @@ import {
 } from '../../engine/referenceCurves';
 import { analyzeSfh, SfhVisitInput } from '../../engine/chartAnalyzers';
 import { formatDMY } from './GestationalWheelTool';
+import { ChartZoomModal } from './ChartZoomModal';
+import { RADIUS, SHADOWS } from '../../theme';
 
 interface SfhChartProps {
   visits: {
@@ -26,6 +26,7 @@ interface SfhChartProps {
 
 export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedVisit, setSelectedVisit] = useState<SfhVisitInput | null>(null);
 
   // Filter valid visits with SFH
   const validVisits: SfhVisitInput[] = visits
@@ -40,43 +41,263 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
   const analysis = analyzeSfh(validVisits);
 
   const screenWidth = Dimensions.get('window').width;
-  const chartWidth = isFullscreen ? screenWidth - 32 : screenWidth - 32;
-  const chartHeight = isFullscreen ? 320 : 210;
-
-  const padLeft = 38;
-  const padRight = 16;
-  const padTop = 18;
-  const padBottom = 28;
+  const defaultWidth = Math.max(300, screenWidth - 32);
+  const defaultHeight = 220;
 
   const minX = 16;
   const maxX = 40;
   const minY = 10;
   const maxY = 45;
 
-  const plotW = chartWidth - padLeft - padRight;
-  const plotH = chartHeight - padTop - padBottom;
+  const renderSfhSvg = (width: number, height: number, interactive = false) => {
+    const padLeft = 38;
+    const padRight = 20;
+    const padTop = 20;
+    const padBottom = 28;
 
-  const getX = (week: number) => padLeft + ((week - minX) / (maxX - minX)) * plotW;
-  const getY = (cm: number) => padTop + plotH - ((cm - minY) / (maxY - minY)) * plotH;
+    const plotW = width - padLeft - padRight;
+    const plotH = height - padTop - padBottom;
 
-  // Build SVG polygon path for 10th to 90th centile shaded corridor
-  const p10Points = SFH_REFERENCE_TABLE.map((p) => `${getX(p.week)},${getY(p.p10)}`);
-  const p90PointsReversed = [...SFH_REFERENCE_TABLE].reverse().map((p) => `${getX(p.week)},${getY(p.p90)}`);
-  const corridorPath = `M ${p10Points.join(' L ')} L ${p90PointsReversed.join(' L ')} Z`;
+    const getX = (week: number) => padLeft + ((week - minX) / (maxX - minX)) * plotW;
+    const getY = (cm: number) => padTop + plotH - ((cm - minY) / (maxY - minY)) * plotH;
 
-  // Median 50th centile line
-  const p50Path = SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p50)}`).join(' ');
+    // Build SVG polygon path for 10th to 90th centile shaded corridor
+    const p10Points = SFH_REFERENCE_TABLE.map((p) => `${getX(p.week)},${getY(p.p10)}`);
+    const p90PointsReversed = [...SFH_REFERENCE_TABLE].reverse().map((p) => `${getX(p.week)},${getY(p.p90)}`);
+    const corridorPath = `M ${p10Points.join(' L ')} L ${p90PointsReversed.join(' L ')} Z`;
 
-  // Patient's recorded visits path
-  const patientPath = validVisits
-    .map((v, i) => `${i === 0 ? 'M' : 'L'} ${getX(v.poaWeeks!)} ${getY(v.sfhCm!)}`)
-    .join(' ');
+    // Median 50th centile line
+    const p50Path = SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p50)}`).join(' ');
 
-  const renderContent = () => (
+    // Patient's recorded visits path
+    const patientPath = validVisits
+      .map((v, i) => `${i === 0 ? 'M' : 'L'} ${getX(v.poaWeeks!)} ${getY(v.sfhCm!)}`)
+      .join(' ');
+
+    return (
+      <Svg width={width} height={height}>
+        {/* Background Grid Lines (Y-axis: 15, 20, 25, 30, 35, 40 cm) */}
+        {[15, 20, 25, 30, 35, 40].map((val) => {
+          const y = getY(val);
+          return (
+            <G key={`grid-y-${val}`}>
+              <Line
+                x1={padLeft}
+                y1={y}
+                x2={width - padRight}
+                y2={y}
+                stroke="#F1F5F9"
+                strokeWidth={1}
+              />
+              <SvgText
+                x={padLeft - 6}
+                y={y + 4}
+                fontSize={10}
+                fontWeight="600"
+                fill="#64748B"
+                textAnchor="end"
+              >
+                {val}
+              </SvgText>
+            </G>
+          );
+        })}
+
+        {/* Background Grid Lines (X-axis: 16, 20, 24, 28, 32, 36, 40 weeks) */}
+        {[16, 20, 24, 28, 32, 36, 40].map((w) => {
+          const x = getX(w);
+          return (
+            <G key={`grid-x-${w}`}>
+              <Line
+                x1={x}
+                y1={padTop}
+                x2={x}
+                y2={height - padBottom}
+                stroke="#F1F5F9"
+                strokeWidth={1}
+              />
+              <SvgText
+                x={x}
+                y={height - padBottom + 16}
+                fontSize={10}
+                fontWeight="600"
+                fill="#64748B"
+                textAnchor="middle"
+              >
+                {w}w
+              </SvgText>
+            </G>
+          );
+        })}
+
+        {/* 10th to 90th Centile Shaded Normal Corridor */}
+        <Path d={corridorPath} fill="rgba(16, 185, 129, 0.15)" />
+
+        {/* 10th Centile Line (SGA lower limit) */}
+        <Path
+          d={SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p10)}`).join(' ')}
+          stroke="#10B981"
+          strokeWidth={1.5}
+          strokeDasharray="4, 3"
+          fill="none"
+        />
+
+        {/* 90th Centile Line (LGA upper limit) */}
+        <Path
+          d={SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p90)}`).join(' ')}
+          stroke="#10B981"
+          strokeWidth={1.5}
+          strokeDasharray="4, 3"
+          fill="none"
+        />
+
+        {/* 50th Centile Median Line */}
+        <Path d={p50Path} stroke="#059669" strokeWidth={2} fill="none" />
+
+        {/* Patient SFH Curve */}
+        {validVisits.length > 1 && (
+          <Path
+            d={patientPath}
+            stroke="#2563EB"
+            strokeWidth={3}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+
+        {/* Patient SFH Data Points */}
+        {validVisits.map((v, idx) => {
+          const cx = getX(v.poaWeeks!);
+          const cy = getY(v.sfhCm!);
+          const isLatest = idx === validVisits.length - 1;
+          const isSelected =
+            selectedVisit &&
+            selectedVisit.poaWeeks === v.poaWeeks &&
+            selectedVisit.sfhCm === v.sfhCm;
+
+          return (
+            <G
+              key={`patient-pt-${idx}`}
+              onPress={() => interactive && setSelectedVisit(v)}
+            >
+              {isSelected && (
+                <Circle
+                  cx={cx}
+                  cy={cy}
+                  r={12}
+                  fill="rgba(37, 99, 235, 0.2)"
+                />
+              )}
+              <Circle
+                cx={cx}
+                cy={cy}
+                r={isSelected ? 7 : isLatest ? 6 : 4.5}
+                fill={isSelected ? '#1D4ED8' : isLatest ? '#2563EB' : '#3B82F6'}
+                stroke="#FFFFFF"
+                strokeWidth={2}
+              />
+              <SvgText
+                x={cx}
+                y={cy - 9}
+                fontSize={isSelected ? 11 : 9}
+                fontWeight="bold"
+                fill={isSelected ? '#1D4ED8' : '#1E293B'}
+                textAnchor="middle"
+              >
+                {v.sfhCm}
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    );
+  };
+
+  const renderLegend = () => (
+    <View style={styles.legendRow}>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#2563EB' }]} />
+        <Text style={styles.legendText}>Mother&apos;s SFH (මවගේ උස)</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#059669' }]} />
+        <Text style={styles.legendText}>50th Centile Median</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: 'rgba(16, 185, 129, 0.3)' }]} />
+        <Text style={styles.legendText}>10th - 90th Corridor</Text>
+      </View>
+    </View>
+  );
+
+  const renderClinicalBanner = () => (
+    <View
+      style={[
+        styles.alertBanner,
+        analysis.status === 'NORMAL' && styles.alertNormal,
+        (analysis.status === 'SGA' || analysis.status === 'LGA') && styles.alertWarning,
+        analysis.status === 'STATIC_GROWTH' && styles.alertDanger,
+      ]}
+    >
+      <Text style={styles.alertIcon}>
+        {analysis.status === 'NORMAL' ? '✓' : analysis.status === 'STATIC_GROWTH' ? '⚠️' : 'ℹ️'}
+      </Text>
+      <View style={{ flex: 1 }}>
+        <Text
+          style={[
+            styles.alertTextEn,
+            analysis.status === 'NORMAL' && styles.textNormal,
+            (analysis.status === 'SGA' || analysis.status === 'LGA') && styles.textWarning,
+            analysis.status === 'STATIC_GROWTH' && styles.textDanger,
+          ]}
+        >
+          {analysis.alertEn}
+        </Text>
+        <Text style={styles.alertTextSi}>{analysis.alertSi}</Text>
+      </View>
+    </View>
+  );
+
+  const renderTable = () => {
+    if (validVisits.length === 0) return null;
+    return (
+      <View style={styles.tableWrapper}>
+        <Text style={styles.tableHeading}>Recorded Visits History</Text>
+        <View style={styles.tableHeaderRow}>
+          <Text style={[styles.thText, { flex: 1.2 }]}>Date</Text>
+          <Text style={[styles.thText, { flex: 1 }]}>POA</Text>
+          <Text style={[styles.thText, { flex: 1 }]}>SFH (cm)</Text>
+          <Text style={[styles.thText, { flex: 1.5 }]}>Centile Range</Text>
+        </View>
+        {validVisits.map((v, i) => (
+          <TouchableOpacity
+            key={`hist-${i}`}
+            style={[
+              styles.tableDataRow,
+              selectedVisit?.visitDate === v.visitDate && { backgroundColor: '#EFF6FF' },
+            ]}
+            onPress={() => setSelectedVisit(v)}
+          >
+            <Text style={[styles.tdText, { flex: 1.2 }]}>{formatDMY(v.visitDate)}</Text>
+            <Text style={[styles.tdText, { flex: 1, fontWeight: '700' }]}>{v.poaWeeks}w</Text>
+            <Text style={[styles.tdText, { flex: 1, color: '#2563EB', fontWeight: '800' }]}>
+              {v.sfhCm} cm
+            </Text>
+            <Text style={[styles.tdText, { flex: 1.5, color: '#059669' }]}>
+              10th-90th Normal
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  return (
     <View style={styles.card}>
       {/* Chart Header */}
       <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, marginRight: 8 }}>
           <View style={styles.badgeRow}>
             <Text style={styles.chartTitle}>Symphysis-Fundal Height (SFH)</Text>
             <View style={styles.standardBadge}>
@@ -89,223 +310,63 @@ export const SfhChart: React.FC<SfhChartProps> = ({ visits, motherName }) => {
         </View>
         <TouchableOpacity
           style={styles.expandBtn}
-          onPress={() => setIsFullscreen(!isFullscreen)}
-          accessibilityLabel="Toggle fullscreen chart"
+          onPress={() => setIsFullscreen(true)}
+          accessibilityLabel="Expand and zoom chart"
         >
-          <Text style={styles.expandBtnText}>{isFullscreen ? '✕ Close' : '⛶ Zoom'}</Text>
+          <Text style={styles.expandBtnText}>🔍 විශාල කර බලන්න</Text>
         </TouchableOpacity>
       </View>
 
       {/* Clinical Alert Banner */}
-      <View
-        style={[
-          styles.alertBanner,
-          analysis.status === 'NORMAL' && styles.alertNormal,
-          (analysis.status === 'SGA' || analysis.status === 'LGA') && styles.alertWarning,
-          analysis.status === 'STATIC_GROWTH' && styles.alertDanger,
-        ]}
-      >
-        <Text style={styles.alertIcon}>
-          {analysis.status === 'NORMAL' ? '✓' : analysis.status === 'STATIC_GROWTH' ? '⚠️' : 'ℹ️'}
-        </Text>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[
-              styles.alertTextEn,
-              analysis.status === 'NORMAL' && styles.textNormal,
-              (analysis.status === 'SGA' || analysis.status === 'LGA') && styles.textWarning,
-              analysis.status === 'STATIC_GROWTH' && styles.textDanger,
-            ]}
-          >
-            {analysis.alertEn}
-          </Text>
-          <Text style={styles.alertTextSi}>{analysis.alertSi}</Text>
-        </View>
-      </View>
+      {renderClinicalBanner()}
 
-      {/* SVG Canvas */}
+      {/* Standard SVG Canvas */}
       <View style={styles.svgWrapper}>
-        <Svg width={chartWidth} height={chartHeight}>
-          {/* Background Grid Lines (Y-axis: 15, 20, 25, 30, 35, 40 cm) */}
-          {[15, 20, 25, 30, 35, 40].map((val) => {
-            const y = getY(val);
-            return (
-              <G key={`grid-y-${val}`}>
-                <Line
-                  x1={padLeft}
-                  y1={y}
-                  x2={chartWidth - padRight}
-                  y2={y}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
-                <SvgText
-                  x={padLeft - 6}
-                  y={y + 4}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="end"
-                >
-                  {val}
-                </SvgText>
-              </G>
-            );
-          })}
-
-          {/* Background Grid Lines (X-axis: 16, 20, 24, 28, 32, 36, 40 weeks) */}
-          {[16, 20, 24, 28, 32, 36, 40].map((w) => {
-            const x = getX(w);
-            return (
-              <G key={`grid-x-${w}`}>
-                <Line
-                  x1={x}
-                  y1={padTop}
-                  x2={x}
-                  y2={chartHeight - padBottom}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
-                <SvgText
-                  x={x}
-                  y={chartHeight - padBottom + 16}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="middle"
-                >
-                  {w}w
-                </SvgText>
-              </G>
-            );
-          })}
-
-          {/* 10th to 90th Centile Shaded Normal Corridor */}
-          <Path d={corridorPath} fill="rgba(16, 185, 129, 0.15)" />
-
-          {/* 10th Centile Line (SGA lower limit) */}
-          <Path
-            d={SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p10)}`).join(' ')}
-            stroke="#10B981"
-            strokeWidth={1.5}
-            strokeDasharray="4, 3"
-            fill="none"
-          />
-
-          {/* 90th Centile Line (LGA upper limit) */}
-          <Path
-            d={SFH_REFERENCE_TABLE.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.p90)}`).join(' ')}
-            stroke="#10B981"
-            strokeWidth={1.5}
-            strokeDasharray="4, 3"
-            fill="none"
-          />
-
-          {/* 50th Centile Median Line */}
-          <Path d={p50Path} stroke="#059669" strokeWidth={2} fill="none" />
-
-          {/* Patient SFH Curve */}
-          {validVisits.length > 1 && (
-            <Path
-              d={patientPath}
-              stroke="#2563EB"
-              strokeWidth={3}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-
-          {/* Patient SFH Data Points */}
-          {validVisits.map((v, idx) => {
-            const cx = getX(v.poaWeeks!);
-            const cy = getY(v.sfhCm!);
-            const isLatest = idx === validVisits.length - 1;
-            return (
-              <G key={`patient-pt-${idx}`}>
-                <Circle
-                  cx={cx}
-                  cy={cy}
-                  r={isLatest ? 6 : 4.5}
-                  fill={isLatest ? '#2563EB' : '#3B82F6'}
-                  stroke="#FFFFFF"
-                  strokeWidth={2}
-                />
-                <SvgText
-                  x={cx}
-                  y={cy - 9}
-                  fontSize={9}
-                  fontWeight="bold"
-                  fill="#1E293B"
-                  textAnchor="middle"
-                >
-                  {v.sfhCm}
-                </SvgText>
-              </G>
-            );
-          })}
-        </Svg>
+        {renderSfhSvg(defaultWidth, defaultHeight, false)}
       </View>
 
       {/* Chart Legend */}
-      <View style={styles.legendRow}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: '#2563EB' }]} />
-          <Text style={styles.legendText}>Mother&apos;s SFH (මවගේ උස)</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: '#059669' }]} />
-          <Text style={styles.legendText}>50th Centile Median</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: 'rgba(16, 185, 129, 0.3)' }]} />
-          <Text style={styles.legendText}>10th - 90th Corridor</Text>
-        </View>
-      </View>
+      {renderLegend()}
 
       {/* Measurement Table Snippet */}
-      {validVisits.length > 0 && (
-        <View style={styles.tableWrapper}>
-          <Text style={styles.tableHeading}>Recorded Visits History</Text>
-          <View style={styles.tableHeaderRow}>
-            <Text style={[styles.thText, { flex: 1.2 }]}>Date</Text>
-            <Text style={[styles.thText, { flex: 1 }]}>POA</Text>
-            <Text style={[styles.thText, { flex: 1 }]}>SFH (cm)</Text>
-            <Text style={[styles.thText, { flex: 1.5 }]}>Centile Range</Text>
-          </View>
-          {validVisits.map((v, i) => (
-            <View key={`hist-${i}`} style={styles.tableDataRow}>
-              <Text style={[styles.tdText, { flex: 1.2 }]}>{formatDMY(v.visitDate)}</Text>
-              <Text style={[styles.tdText, { flex: 1, fontWeight: '700' }]}>{v.poaWeeks}w</Text>
-              <Text style={[styles.tdText, { flex: 1, color: '#2563EB', fontWeight: '800' }]}>
-                {v.sfhCm} cm
-              </Text>
-              <Text style={[styles.tdText, { flex: 1.5, color: '#059669' }]}>
-                10th-90th Normal
-              </Text>
+      {renderTable()}
+
+      {/* Zoom & Fullscreen Interactive Modal */}
+      {isFullscreen && (
+        <ChartZoomModal
+          visible={isFullscreen}
+          onClose={() => {
+            setIsFullscreen(false);
+            setSelectedVisit(null);
+          }}
+          title="Symphysis-Fundal Height (SFH)"
+          subtitle={motherName ? `මව: ${motherName} (සති 16 - 40)` : 'ගර්භාෂ උස ප්‍රස්තාරය (සති 16 - 40)'}
+          badgeText="FHB Standard"
+          baseWidth={screenWidth - 24}
+          baseHeight={280}
+          initialScale={1.5}
+          renderChart={(_scale, w, h) => renderSfhSvg(w, h, true)}
+          legend={renderLegend()}
+          extraContent={
+            <View>
+              {selectedVisit && (
+                <View style={styles.selectedPointCard}>
+                  <Text style={styles.selectedPointTitle}>📍 තෝරාගත් වාර්තාව (Selected Point)</Text>
+                  <Text style={styles.selectedPointDetails}>
+                    දිනය: <Text style={{ fontWeight: '700' }}>{formatDMY(selectedVisit.visitDate)}</Text> • 
+                    ගර්භ සති: <Text style={{ fontWeight: '700' }}>{selectedVisit.poaWeeks} සති</Text> • 
+                    SFH: <Text style={{ fontWeight: '800', color: '#2563EB' }}>{selectedVisit.sfhCm} cm</Text>
+                  </Text>
+                </View>
+              )}
+              {renderClinicalBanner()}
+              {renderTable()}
             </View>
-          ))}
-        </View>
+          }
+        />
       )}
     </View>
   );
-
-  if (isFullscreen) {
-    return (
-      <Modal visible={isFullscreen} animationType="fade" transparent={false}>
-        <ScrollView style={styles.fullscreenScroll} contentContainerStyle={{ padding: 16 }}>
-          <View style={{ marginBottom: 12 }}>
-            <Text style={styles.fullscreenTitle}>
-              Full Standardized SFH Midwifery Chart {motherName ? `• ${motherName}` : ''}
-            </Text>
-          </View>
-          {renderContent()}
-        </ScrollView>
-      </Modal>
-    );
-  }
-
-  return renderContent();
 };
 
 const styles = StyleSheet.create({
@@ -316,6 +377,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     marginBottom: 16,
+    ...SHADOWS.card,
   },
   headerRow: {
     flexDirection: 'row',
@@ -330,7 +392,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   chartTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
   },
@@ -353,63 +415,71 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   expandBtn: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: '#F0FDFA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    alignSelf: 'flex-start',
+    minHeight: 38,
+    justifyContent: 'center',
   },
   expandBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#334155',
+    color: '#0F766E',
   },
   alertBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    borderRadius: 10,
-    marginBottom: 10,
-    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 12,
     gap: 8,
   },
   alertNormal: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+    borderWidth: 1,
   },
   alertWarning: {
     backgroundColor: '#FFFBEB',
     borderColor: '#FDE68A',
+    borderWidth: 1,
   },
   alertDanger: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
+    borderWidth: 1,
   },
   alertIcon: {
     fontSize: 16,
-    fontWeight: 'bold',
   },
   alertTextEn: {
     fontSize: 12,
     fontWeight: '700',
   },
-  textNormal: {
-    color: '#15803D',
-  },
-  textWarning: {
-    color: '#B45309',
-  },
-  textDanger: {
-    color: '#B91C1C',
-  },
   alertTextSi: {
     fontSize: 11,
     color: '#475569',
-    marginTop: 2,
+    marginTop: 1,
+  },
+  textNormal: {
+    color: '#065F46',
+  },
+  textWarning: {
+    color: '#92400E',
+  },
+  textDanger: {
+    color: '#991B1B',
   },
   svgWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
   },
   legendRow: {
     flexDirection: 'row',
@@ -423,7 +493,7 @@ const styles = StyleSheet.create({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   legendBox: {
     width: 12,
@@ -431,7 +501,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   legendText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#475569',
     fontWeight: '600',
   },
@@ -459,23 +529,34 @@ const styles = StyleSheet.create({
   thText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#475569',
+    color: '#64748B',
   },
   tableDataRow: {
     flexDirection: 'row',
-    paddingVertical: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    borderRadius: 4,
   },
   tdText: {
     fontSize: 10,
     color: '#1E293B',
   },
-  fullscreenScroll: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
+  selectedPointCard: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
   },
-  fullscreenTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+  selectedPointTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E40AF',
+    marginBottom: 2,
+  },
+  selectedPointDetails: {
+    fontSize: 12,
+    color: '#1E293B',
   },
 });

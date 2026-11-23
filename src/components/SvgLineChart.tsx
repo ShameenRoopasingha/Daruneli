@@ -1,7 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import Svg, { Path, Circle, Line, Text as SvgText, Rect, G } from 'react-native-svg';
 import { COLORS, RADIUS, SHADOWS } from '../theme';
+import { ChartZoomModal } from './charts/ChartZoomModal';
 
 export interface DataPoint {
   label: string;
@@ -20,6 +21,7 @@ interface SvgLineChartProps {
   primaryLegend?: string;
   secondaryLegend?: string;
   referenceLine?: { value: number; label: string; color: string };
+  allowZoom?: boolean;
 }
 
 export const SvgLineChart: React.FC<SvgLineChartProps> = ({
@@ -33,13 +35,13 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
   primaryLegend,
   secondaryLegend,
   referenceLine,
+  allowZoom = true,
 }) => {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedPointIndex, setSelectedPointIndex] = useState<number | null>(null);
+
   const screenWidth = Dimensions.get('window').width;
-  const chartWidth = customWidth || screenWidth - 32;
-  const paddingLeft = 38;
-  const paddingRight = 18;
-  const paddingTop = 22;
-  const paddingBottom = 30;
+  const chartWidth = customWidth || Math.max(300, screenWidth - 32);
 
   if (!data || data.length < 2) {
     return (
@@ -69,63 +71,50 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
   const minY = Math.floor(rawMin - margin);
   const maxY = Math.ceil(rawMax + margin);
 
-  const plotWidth = chartWidth - paddingLeft - paddingRight;
-  const plotHeight = height - paddingTop - paddingBottom;
+  const renderSvgCanvas = (w: number, h: number, interactive = false) => {
+    const paddingLeft = 38;
+    const paddingRight = 20;
+    const paddingTop = 22;
+    const paddingBottom = 30;
 
-  const getX = (index: number) => {
-    if (data.length === 1) return paddingLeft + plotWidth / 2;
-    return paddingLeft + (index / (data.length - 1)) * plotWidth;
-  };
+    const plotWidth = w - paddingLeft - paddingRight;
+    const plotHeight = h - paddingTop - paddingBottom;
 
-  const getY = (val: number) => {
-    if (maxY === minY) return paddingTop + plotHeight / 2;
-    return paddingTop + plotHeight - ((val - minY) / (maxY - minY)) * plotHeight;
-  };
+    const getX = (index: number) => {
+      if (data.length === 1) return paddingLeft + plotWidth / 2;
+      return paddingLeft + (index / (data.length - 1)) * plotWidth;
+    };
 
-  // Build SVG Paths
-  let primaryPath = '';
-  let secondaryPath = '';
+    const getY = (val: number) => {
+      if (maxY === minY) return paddingTop + plotHeight / 2;
+      return paddingTop + plotHeight - ((val - minY) / (maxY - minY)) * plotHeight;
+    };
 
-  data.forEach((pt, i) => {
-    const x = getX(i);
-    const yPrimary = getY(pt.value);
-    if (i === 0) {
-      primaryPath += `M ${x} ${yPrimary}`;
-    } else {
-      primaryPath += ` L ${x} ${yPrimary}`;
-    }
+    // Build SVG Paths
+    let primaryPath = '';
+    let secondaryPath = '';
 
-    if (pt.secondaryValue !== undefined) {
-      const ySecondary = getY(pt.secondaryValue);
+    data.forEach((pt, i) => {
+      const x = getX(i);
+      const yPrimary = getY(pt.value);
       if (i === 0) {
-        secondaryPath += `M ${x} ${ySecondary}`;
+        primaryPath += `M ${x} ${yPrimary}`;
       } else {
-        secondaryPath += ` L ${x} ${ySecondary}`;
+        primaryPath += ` L ${x} ${yPrimary}`;
       }
-    }
-  });
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.legendRow}>
-          {primaryLegend && (
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: primaryColor }]} />
-              <Text style={styles.legendText}>{primaryLegend}</Text>
-            </View>
-          )}
-          {secondaryLegend && (
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: secondaryColor }]} />
-              <Text style={styles.legendText}>{secondaryLegend}</Text>
-            </View>
-          )}
-        </View>
-      </View>
+      if (pt.secondaryValue !== undefined) {
+        const ySecondary = getY(pt.secondaryValue);
+        if (i === 0) {
+          secondaryPath += `M ${x} ${ySecondary}`;
+        } else {
+          secondaryPath += ` L ${x} ${ySecondary}`;
+        }
+      }
+    });
 
-      <Svg width={chartWidth} height={height}>
+    return (
+      <Svg width={w} height={h}>
         {/* Subtle background container */}
         <Rect
           x={paddingLeft}
@@ -218,13 +207,25 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
         {data.map((pt, i) => {
           const x = getX(i);
           const yPrimary = getY(pt.value);
+          const isSelected = selectedPointIndex === i;
 
           return (
-            <G key={`pt-${i}`}>
+            <G
+              key={`pt-${i}`}
+              onPress={() => interactive && setSelectedPointIndex(i)}
+            >
+              {isSelected && (
+                <Circle
+                  cx={x}
+                  cy={yPrimary}
+                  r={12}
+                  fill="rgba(13, 148, 136, 0.25)"
+                />
+              )}
               <Circle
                 cx={x}
                 cy={yPrimary}
-                r={4.5}
+                r={isSelected ? 6.5 : 4.5}
                 fill={primaryColor}
                 stroke="#FFFFFF"
                 strokeWidth={2}
@@ -232,7 +233,7 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
               <SvgText
                 x={x}
                 y={yPrimary - 8}
-                fontSize={10}
+                fontSize={isSelected ? 11 : 10}
                 fill={COLORS.textPrimary}
                 fontWeight="800"
                 textAnchor="middle"
@@ -242,10 +243,18 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
 
               {pt.secondaryValue !== undefined && (
                 <G>
+                  {isSelected && (
+                    <Circle
+                      cx={x}
+                      cy={getY(pt.secondaryValue)}
+                      r={12}
+                      fill="rgba(220, 38, 38, 0.25)"
+                    />
+                  )}
                   <Circle
                     cx={x}
                     cy={getY(pt.secondaryValue)}
-                    r={4.5}
+                    r={isSelected ? 6.5 : 4.5}
                     fill={secondaryColor}
                     stroke="#FFFFFF"
                     strokeWidth={2}
@@ -253,7 +262,7 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
                   <SvgText
                     x={x}
                     y={getY(pt.secondaryValue) + 14}
-                    fontSize={10}
+                    fontSize={isSelected ? 11 : 10}
                     fill={COLORS.textPrimary}
                     fontWeight="800"
                     textAnchor="middle"
@@ -266,7 +275,7 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
               {/* X-axis label */}
               <SvgText
                 x={x}
-                y={height - 8}
+                y={h - 8}
                 fontSize={10}
                 fill="#64748B"
                 fontWeight="600"
@@ -278,6 +287,82 @@ export const SvgLineChart: React.FC<SvgLineChartProps> = ({
           );
         })}
       </Svg>
+    );
+  };
+
+  const renderLegend = () => (
+    <View style={styles.legendRow}>
+      {primaryLegend && (
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: primaryColor }]} />
+          <Text style={styles.legendText}>{primaryLegend}</Text>
+        </View>
+      )}
+      {secondaryLegend && (
+        <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: secondaryColor }]} />
+          <Text style={styles.legendText}>{secondaryLegend}</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  const selectedPt = selectedPointIndex !== null ? data[selectedPointIndex] : null;
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1, marginRight: 8 }}>
+          <Text style={styles.title}>{title}</Text>
+          {renderLegend()}
+        </View>
+
+        {allowZoom && data.length >= 2 && (
+          <TouchableOpacity
+            style={styles.expandBtn}
+            onPress={() => setIsFullscreen(true)}
+            accessibilityLabel="Expand chart"
+          >
+            <Text style={styles.expandBtnText}>🔍 Zoom</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {renderSvgCanvas(chartWidth, height, false)}
+
+      {isFullscreen && (
+        <ChartZoomModal
+          visible={isFullscreen}
+          onClose={() => {
+            setIsFullscreen(false);
+            setSelectedPointIndex(null);
+          }}
+          title={title}
+          subtitle={`Clinical Trend Records (${data.length} measurements)`}
+          badgeText={unit || 'Trend'}
+          baseWidth={screenWidth - 24}
+          baseHeight={260}
+          initialScale={1.5}
+          renderChart={(_scale, w, h) => renderSvgCanvas(w, h, true)}
+          legend={renderLegend()}
+          extraContent={
+            selectedPt && (
+              <View style={styles.selectedPointCard}>
+                <Text style={styles.selectedPointTitle}>📍 තෝරාගත් මිනුම (Selected Point)</Text>
+                <Text style={styles.selectedPointDetails}>
+                  දිනය/ලේබලය: <Text style={{ fontWeight: '700' }}>{selectedPt.label}</Text> • 
+                  {primaryLegend || 'අගය'}: <Text style={{ fontWeight: '800', color: primaryColor }}>{selectedPt.value} {unit}</Text>
+                  {selectedPt.secondaryValue !== undefined && (
+                    <>
+                      {' • '}{secondaryLegend || 'ද්විතීයික'}: <Text style={{ fontWeight: '800', color: secondaryColor }}>{selectedPt.secondaryValue} {unit}</Text>
+                    </>
+                  )}
+                </Text>
+              </View>
+            )
+          }
+        />
+      )}
     </View>
   );
 };
@@ -286,7 +371,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.xl,
-    padding: 16,
+    padding: 14,
     marginVertical: 8,
     borderWidth: 1,
     borderColor: COLORS.borderHairline,
@@ -295,18 +380,18 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 8,
   },
   title: {
     fontSize: 14,
     fontWeight: '800',
-    letterSpacing: -0.2,
     color: COLORS.textPrimary,
   },
   legendRow: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 4,
   },
   legendItem: {
     flexDirection: 'row',
@@ -323,6 +408,22 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     fontWeight: '600',
   },
+  expandBtn: {
+    backgroundColor: '#F0FDFA',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    alignSelf: 'flex-start',
+    minHeight: 32,
+    justifyContent: 'center',
+  },
+  expandBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F766E',
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -336,5 +437,23 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.textTertiary,
     fontWeight: '500',
+  },
+  selectedPointCard: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 8,
+  },
+  selectedPointTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F766E',
+    marginBottom: 2,
+  },
+  selectedPointDetails: {
+    fontSize: 12,
+    color: '#1E293B',
   },
 });

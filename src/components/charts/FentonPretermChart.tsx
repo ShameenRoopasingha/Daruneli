@@ -4,9 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Modal,
   Dimensions,
-  ScrollView,
 } from 'react-native';
 import Svg, { Path, Circle, Line, Text as SvgText, G } from 'react-native-svg';
 import {
@@ -14,6 +12,9 @@ import {
   FENTON_PRETERM_GIRLS,
   FentonPretermPoint,
 } from '../../engine/referenceCurves';
+import { ChartZoomModal } from './ChartZoomModal';
+import { RADIUS, SHADOWS } from '../../theme';
+import { formatDMY } from './GestationalWheelTool';
 
 export type FentonTab = 'WEIGHT' | 'LENGTH' | 'HC';
 
@@ -31,6 +32,13 @@ interface FentonPretermChartProps {
   }[];
 }
 
+interface PatientPmaPoint {
+  pmaWeeks: number;
+  value: number;
+  label: string;
+  date: string;
+}
+
 export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
   gender,
   birthGestationalWeeks,
@@ -40,21 +48,14 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<FentonTab>('WEIGHT');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedPoint, setSelectedPoint] = useState<PatientPmaPoint | null>(null);
 
   const isBoy = gender === 'M';
   const table = isBoy ? FENTON_PRETERM_BOYS : FENTON_PRETERM_GIRLS;
 
   const screenWidth = Dimensions.get('window').width;
-  const chartWidth = screenWidth - 32;
-  const chartHeight = isFullscreen ? 320 : 210;
-
-  const padLeft = 38;
-  const padRight = 16;
-  const padTop = 18;
-  const padBottom = 26;
-
-  const plotW = chartWidth - padLeft - padRight;
-  const plotH = chartHeight - padTop - padBottom;
+  const defaultWidth = Math.max(300, screenWidth - 32);
+  const defaultHeight = 220;
 
   const minX = 24;
   const maxX = 50;
@@ -81,9 +82,6 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
     unit = 'cm';
   }
 
-  const getX = (w: number) => padLeft + ((w - minX) / (maxX - minX)) * plotW;
-  const getY = (val: number) => padTop + plotH - ((val - minY) / (maxY - minY)) * plotH;
-
   // Build Centile Curves for Active Tab
   const getP10 = (p: FentonPretermPoint) =>
     activeTab === 'WEIGHT' ? p.weightP10 : activeTab === 'LENGTH' ? p.lengthP10 : p.hcP10;
@@ -92,22 +90,7 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
   const getP90 = (p: FentonPretermPoint) =>
     activeTab === 'WEIGHT' ? p.weightP90 : activeTab === 'LENGTH' ? p.lengthP90 : p.hcP90;
 
-  const pts10 = table.map((p) => `${getX(p.week)},${getY(getP10(p))}`);
-  const pts90Rev = [...table].reverse().map((p) => `${getX(p.week)},${getY(getP90(p))}`);
-  const corridorPath = `M ${pts10.join(' L ')} L ${pts90Rev.join(' L ')} Z`;
-
-  const p50LinePath = table
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(getP50(p))}`)
-    .join(' ');
-
   // Patient Preterm Measurements plotted by Post-Menstrual Age (PMA)
-  interface PatientPmaPoint {
-    pmaWeeks: number;
-    value: number;
-    label: string;
-    date: string;
-  }
-
   const patientPoints: PatientPmaPoint[] = [];
   growthRecords.forEach((r) => {
     const recDate = new Date(r.recorded_date);
@@ -131,15 +114,300 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
 
   patientPoints.sort((a, b) => a.pmaWeeks - b.pmaWeeks);
 
-  const patientLinePath = patientPoints
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.pmaWeeks)} ${getY(p.value)}`)
-    .join(' ');
+  const renderFentonSvg = (width: number, height: number, interactive = false) => {
+    const padLeft = 38;
+    const padRight = 20;
+    const padTop = 18;
+    const padBottom = 26;
 
-  const renderContent = () => (
+    const plotW = width - padLeft - padRight;
+    const plotH = height - padTop - padBottom;
+
+    const getX = (w: number) => padLeft + ((w - minX) / (maxX - minX)) * plotW;
+    const getY = (val: number) => padTop + plotH - ((val - minY) / (maxY - minY)) * plotH;
+
+    const pts10 = table.map((p) => `${getX(p.week)},${getY(getP10(p))}`);
+    const pts90Rev = [...table].reverse().map((p) => `${getX(p.week)},${getY(getP90(p))}`);
+    const corridorPath = `M ${pts10.join(' L ')} L ${pts90Rev.join(' L ')} Z`;
+
+    const p50LinePath = table
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(getP50(p))}`)
+      .join(' ');
+
+    const patientLinePath = patientPoints
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.pmaWeeks)} ${getY(p.value)}`)
+      .join(' ');
+
+    const weeksToShow = width > 500
+      ? [24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50]
+      : [24, 28, 32, 36, 40, 44, 48, 50];
+
+    return (
+      <Svg width={width} height={height}>
+        {/* Shaded 10th to 90th Centile Corridor */}
+        <Path d={corridorPath} fill="rgba(99, 102, 241, 0.15)" />
+
+        {/* 10th Centile Line */}
+        <Path
+          d={table.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(getP10(p))}`).join(' ')}
+          stroke="#6366F1"
+          strokeWidth={1.5}
+          strokeDasharray="4, 3"
+          fill="none"
+        />
+
+        {/* 90th Centile Line */}
+        <Path
+          d={table.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(getP90(p))}`).join(' ')}
+          stroke="#6366F1"
+          strokeWidth={1.5}
+          strokeDasharray="4, 3"
+          fill="none"
+        />
+
+        {/* 50th Centile Median */}
+        <Path d={p50LinePath} stroke="#4F46E5" strokeWidth={2} fill="none" />
+
+        {/* X-axis Grid */}
+        {weeksToShow.map((w) => {
+          const x = getX(w);
+          return (
+            <G key={`fenton-x-${w}`}>
+              <Line
+                x1={x}
+                y1={padTop}
+                x2={x}
+                y2={height - padBottom}
+                stroke="#F1F5F9"
+                strokeWidth={1}
+              />
+              <SvgText
+                x={x}
+                y={height - padBottom + 16}
+                fontSize={10}
+                fontWeight="600"
+                fill="#64748B"
+                textAnchor="middle"
+              >
+                {w}w
+              </SvgText>
+            </G>
+          );
+        })}
+
+        {/* Y-axis Ticks */}
+        {activeTab === 'WEIGHT' &&
+          [1, 2, 3, 4, 5, 6, 7].map((val) => {
+            const y = getY(val);
+            return (
+              <G key={`y-wt-${val}`}>
+                <Line
+                  x1={padLeft}
+                  y1={y}
+                  x2={width - padRight}
+                  y2={y}
+                  stroke="#F1F5F9"
+                  strokeWidth={1}
+                />
+                <SvgText
+                  x={padLeft - 6}
+                  y={y + 4}
+                  fontSize={10}
+                  fontWeight="600"
+                  fill="#64748B"
+                  textAnchor="end"
+                >
+                  {val}kg
+                </SvgText>
+              </G>
+            );
+          })}
+
+        {activeTab === 'LENGTH' &&
+          [30, 40, 50, 60].map((val) => {
+            const y = getY(val);
+            return (
+              <G key={`y-len-${val}`}>
+                <Line
+                  x1={padLeft}
+                  y1={y}
+                  x2={width - padRight}
+                  y2={y}
+                  stroke="#F1F5F9"
+                  strokeWidth={1}
+                />
+                <SvgText
+                  x={padLeft - 6}
+                  y={y + 4}
+                  fontSize={10}
+                  fontWeight="600"
+                  fill="#64748B"
+                  textAnchor="end"
+                >
+                  {val}cm
+                </SvgText>
+              </G>
+            );
+          })}
+
+        {activeTab === 'HC' &&
+          [20, 26, 32, 38, 42].map((val) => {
+            const y = getY(val);
+            return (
+              <G key={`y-hc-${val}`}>
+                <Line
+                  x1={padLeft}
+                  y1={y}
+                  x2={width - padRight}
+                  y2={y}
+                  stroke="#F1F5F9"
+                  strokeWidth={1}
+                />
+                <SvgText
+                  x={padLeft - 6}
+                  y={y + 4}
+                  fontSize={10}
+                  fontWeight="600"
+                  fill="#64748B"
+                  textAnchor="end"
+                >
+                  {val}cm
+                </SvgText>
+              </G>
+            );
+          })}
+
+        {/* Patient Line */}
+        {patientPoints.length > 1 && (
+          <Path
+            d={patientLinePath}
+            stroke="#0D9488"
+            strokeWidth={3}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+
+        {/* Patient Dots */}
+        {patientPoints.map((pt, i) => {
+          const cx = getX(pt.pmaWeeks);
+          const cy = getY(pt.value);
+          const isLatest = i === patientPoints.length - 1;
+          const isSelected = selectedPoint?.date === pt.date && selectedPoint?.pmaWeeks === pt.pmaWeeks;
+
+          return (
+            <G
+              key={`pt-${i}`}
+              onPress={() => interactive && setSelectedPoint(pt)}
+            >
+              {isSelected && (
+                <Circle
+                  cx={cx}
+                  cy={cy}
+                  r={12}
+                  fill="rgba(13, 148, 136, 0.25)"
+                />
+              )}
+              <Circle
+                cx={cx}
+                cy={cy}
+                r={isSelected ? 7 : isLatest ? 6 : 4.5}
+                fill={isSelected ? '#0F766E' : '#0D9488'}
+                stroke="#FFFFFF"
+                strokeWidth={2}
+              />
+              <SvgText
+                x={cx}
+                y={cy - 8}
+                fontSize={isSelected ? 11 : 9}
+                fontWeight="bold"
+                fill={isSelected ? '#0F766E' : '#1E293B'}
+                textAnchor="middle"
+              >
+                {pt.label}
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    );
+  };
+
+  const renderTabs = () => (
+    <View style={styles.tabContainer}>
+      <TouchableOpacity
+        style={[styles.tabBtn, activeTab === 'WEIGHT' && styles.tabBtnActive]}
+        onPress={() => setActiveTab('WEIGHT')}
+      >
+        <Text style={[styles.tabBtnText, activeTab === 'WEIGHT' && styles.tabBtnTextActive]}>
+          Weight (බර)
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.tabBtn, activeTab === 'LENGTH' && styles.tabBtnActive]}
+        onPress={() => setActiveTab('LENGTH')}
+      >
+        <Text style={[styles.tabBtnText, activeTab === 'LENGTH' && styles.tabBtnTextActive]}>
+          Length (දිග)
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.tabBtn, activeTab === 'HC' && styles.tabBtnActive]}
+        onPress={() => setActiveTab('HC')}
+      >
+        <Text style={[styles.tabBtnText, activeTab === 'HC' && styles.tabBtnTextActive]}>
+          Head Circ. (හිස වටලීම)
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderLegend = () => (
+    <View style={styles.legendRow}>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#0D9488' }]} />
+        <Text style={styles.legendText}>Preterm Infant&apos;s Growth</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#4F46E5' }]} />
+        <Text style={styles.legendText}>50th Centile Median</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: 'rgba(99, 102, 241, 0.3)' }]} />
+        <Text style={styles.legendText}>10th - 90th Centiles</Text>
+      </View>
+    </View>
+  );
+
+  const renderTransitionBanner = () => (
+    <View
+      style={[
+        styles.transitionBanner,
+        isTransitioned ? styles.transComplete : styles.transActive,
+      ]}
+    >
+      <Text style={styles.bannerIcon}>{isTransitioned ? '🎓' : '⏳'}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.bannerTextBold}>
+          {isTransitioned
+            ? 'Preterm Follow-up Complete (50 Weeks PMA Reached)'
+            : `Current Post-Menstrual Age: ${currentPmaWeeks} Weeks`}
+        </Text>
+        <Text style={styles.bannerTextDesc}>
+          {isTransitioned
+            ? 'Infant has successfully graduated to standard WHO Child Growth Standards (CHDR).'
+            : `Transition to standard WHO CHDR chart occurs at 50 weeks PMA (${+(50 - currentPmaWeeks).toFixed(1)} weeks remaining).`}
+        </Text>
+      </View>
+    </View>
+  );
+
+  return (
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, marginRight: 8 }}>
           <View style={styles.badgeRow}>
             <Text style={styles.title}>Fenton Preterm Growth Chart</Text>
             <View style={styles.pretermBadge}>
@@ -154,193 +422,67 @@ export const FentonPretermChart: React.FC<FentonPretermChartProps> = ({
         </View>
         <TouchableOpacity
           style={styles.expandBtn}
-          onPress={() => setIsFullscreen(!isFullscreen)}
+          onPress={() => setIsFullscreen(true)}
+          accessibilityLabel="Expand and zoom Fenton preterm chart"
         >
-          <Text style={styles.expandBtnText}>{isFullscreen ? '✕ Close' : '⛶ Zoom'}</Text>
+          <Text style={styles.expandBtnText}>🔍 විශාල කර බලන්න</Text>
         </TouchableOpacity>
       </View>
 
       {/* 50-Week WHO Transition Banner */}
-      <View
-        style={[
-          styles.transitionBanner,
-          isTransitioned ? styles.transComplete : styles.transActive,
-        ]}
-      >
-        <Text style={styles.bannerIcon}>{isTransitioned ? '🎓' : '⏳'}</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTextBold}>
-            {isTransitioned
-              ? 'Preterm Follow-up Complete (50 Weeks PMA Reached)'
-              : `Current Post-Menstrual Age: ${currentPmaWeeks} Weeks`}
-          </Text>
-          <Text style={styles.bannerTextDesc}>
-            {isTransitioned
-              ? 'Infant has successfully graduated to standard WHO Child Growth Standards (CHDR).'
-              : `Transition to standard WHO CHDR chart occurs at 50 weeks PMA (${+(50 - currentPmaWeeks).toFixed(1)} weeks remaining).`}
-          </Text>
-        </View>
-      </View>
+      {renderTransitionBanner()}
 
       {/* Metric Selector Tabs */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'WEIGHT' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('WEIGHT')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'WEIGHT' && styles.tabBtnTextActive]}>
-            Weight (බර)
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'LENGTH' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('LENGTH')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'LENGTH' && styles.tabBtnTextActive]}>
-            Length (දිග)
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'HC' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('HC')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'HC' && styles.tabBtnTextActive]}>
-            Head Circ. (හිස වටලීම)
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {renderTabs()}
 
       {/* SVG Canvas */}
       <View style={styles.svgWrapper}>
-        <Svg width={chartWidth} height={chartHeight}>
-          {/* Shaded 10th to 90th Centile Corridor */}
-          <Path d={corridorPath} fill="rgba(99, 102, 241, 0.15)" />
-
-          {/* 10th Centile Line */}
-          <Path
-            d={table.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(getP10(p))}`).join(' ')}
-            stroke="#6366F1"
-            strokeWidth={1.5}
-            strokeDasharray="4, 3"
-            fill="none"
-          />
-
-          {/* 90th Centile Line */}
-          <Path
-            d={table.map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(getP90(p))}`).join(' ')}
-            stroke="#6366F1"
-            strokeWidth={1.5}
-            strokeDasharray="4, 3"
-            fill="none"
-          />
-
-          {/* 50th Centile Median */}
-          <Path d={p50LinePath} stroke="#4F46E5" strokeWidth={2} fill="none" />
-
-          {/* Grid lines (X: 24, 28, 32, 36, 40, 44, 48, 50w) */}
-          {[24, 28, 32, 36, 40, 44, 48, 50].map((w) => {
-            const x = getX(w);
-            return (
-              <G key={`fenton-x-${w}`}>
-                <Line
-                  x1={x}
-                  y1={padTop}
-                  x2={x}
-                  y2={chartHeight - padBottom}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
-                <SvgText
-                  x={x}
-                  y={chartHeight - padBottom + 16}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="middle"
-                >
-                  {w}w
-                </SvgText>
-              </G>
-            );
-          })}
-
-          {/* Patient Line */}
-          {patientPoints.length > 1 && (
-            <Path
-              d={patientLinePath}
-              stroke="#0D9488"
-              strokeWidth={3}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-
-          {/* Patient Dots */}
-          {patientPoints.map((pt, i) => {
-            const cx = getX(pt.pmaWeeks);
-            const cy = getY(pt.value);
-            const isLatest = i === patientPoints.length - 1;
-            return (
-              <G key={`pt-${i}`}>
-                <Circle
-                  cx={cx}
-                  cy={cy}
-                  r={isLatest ? 6 : 4.5}
-                  fill="#0D9488"
-                  stroke="#FFFFFF"
-                  strokeWidth={2}
-                />
-                <SvgText
-                  x={cx}
-                  y={cy - 8}
-                  fontSize={9}
-                  fontWeight="bold"
-                  fill="#1E293B"
-                  textAnchor="middle"
-                >
-                  {pt.label}
-                </SvgText>
-              </G>
-            );
-          })}
-        </Svg>
+        {renderFentonSvg(defaultWidth, defaultHeight, false)}
       </View>
 
       {/* Legend */}
-      <View style={styles.legendRow}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: '#0D9488' }]} />
-          <Text style={styles.legendText}>Preterm Infant&apos;s Growth</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: '#4F46E5' }]} />
-          <Text style={styles.legendText}>50th Centile Median</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: 'rgba(99, 102, 241, 0.3)' }]} />
-          <Text style={styles.legendText}>10th - 90th Centiles</Text>
-        </View>
-      </View>
+      {renderLegend()}
+
+      {/* Zoom Modal */}
+      {isFullscreen && (
+        <ChartZoomModal
+          visible={isFullscreen}
+          onClose={() => {
+            setIsFullscreen(false);
+            setSelectedPoint(null);
+          }}
+          title={`Fenton Preterm (${activeTab})`}
+          subtitle={childName ? `දරුවා: ${childName} (උපත: සති ${birthGestationalWeeks})` : 'නොමේරූ දරු වර්ධන ප්‍රස්තාරය'}
+          badgeText={`PMA ${currentPmaWeeks}w`}
+          baseWidth={screenWidth - 24}
+          baseHeight={280}
+          initialScale={1.5}
+          renderChart={(_scale, w, h) => renderFentonSvg(w, h, true)}
+          legend={
+            <View>
+              {renderTabs()}
+              {renderLegend()}
+            </View>
+          }
+          extraContent={
+            <View>
+              {selectedPoint && (
+                <View style={styles.selectedPointCard}>
+                  <Text style={styles.selectedPointTitle}>📍 තෝරාගත් මිනුම (Selected Measurement)</Text>
+                  <Text style={styles.selectedPointDetails}>
+                    දිනය: <Text style={{ fontWeight: '700' }}>{formatDMY(selectedPoint.date)}</Text> • 
+                    PMA: <Text style={{ fontWeight: '700' }}>{selectedPoint.pmaWeeks} සති</Text> • 
+                    අගය: <Text style={{ fontWeight: '800', color: '#0D9488' }}>{selectedPoint.label}</Text>
+                  </Text>
+                </View>
+              )}
+              {renderTransitionBanner()}
+            </View>
+          }
+        />
+      )}
     </View>
   );
-
-  if (isFullscreen) {
-    return (
-      <Modal visible={isFullscreen} animationType="fade" transparent={false}>
-        <ScrollView style={styles.fullscreenScroll} contentContainerStyle={{ padding: 16 }}>
-          <View style={{ marginBottom: 12 }}>
-            <Text style={styles.fullscreenTitle}>
-              Fenton Preterm Curve {childName ? `• ${childName}` : ''}
-            </Text>
-          </View>
-          {renderContent()}
-        </ScrollView>
-      </Modal>
-    );
-  }
-
-  return renderContent();
 };
 
 const styles = StyleSheet.create({
@@ -351,6 +493,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     marginBottom: 16,
+    ...SHADOWS.card,
   },
   headerRow: {
     flexDirection: 'row',
@@ -365,7 +508,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
   },
@@ -380,7 +523,7 @@ const styles = StyleSheet.create({
   pretermBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#4338CA',
+    color: '#4F46E5',
   },
   subtitle: {
     fontSize: 11,
@@ -388,32 +531,37 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   expandBtn: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    backgroundColor: '#F0FDFA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    alignSelf: 'flex-start',
+    minHeight: 38,
+    justifyContent: 'center',
   },
   expandBtnText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#334155',
+    color: '#0F766E',
   },
   transitionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
     gap: 8,
   },
   transActive: {
-    backgroundColor: '#F5F3FF',
-    borderColor: '#DDD6FE',
-  },
-  transComplete: {
     backgroundColor: '#F0FDF4',
     borderColor: '#BBF7D0',
+  },
+  transComplete: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
   },
   bannerIcon: {
     fontSize: 18,
@@ -426,7 +574,7 @@ const styles = StyleSheet.create({
   bannerTextDesc: {
     fontSize: 11,
     color: '#475569',
-    marginTop: 1,
+    marginTop: 2,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -475,7 +623,7 @@ const styles = StyleSheet.create({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   legendBox: {
     width: 12,
@@ -487,13 +635,22 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontWeight: '600',
   },
-  fullscreenScroll: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
+  selectedPointCard: {
+    backgroundColor: '#F0FDFA',
+    borderColor: '#99F6E4',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
   },
-  fullscreenTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+  selectedPointTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F766E',
+    marginBottom: 2,
+  },
+  selectedPointDetails: {
+    fontSize: 12,
+    color: '#1E293B',
   },
 });

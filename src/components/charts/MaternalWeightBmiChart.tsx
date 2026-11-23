@@ -14,6 +14,15 @@ import {
 } from '../../engine/referenceCurves';
 import { analyzeWeightGain } from '../../engine/chartAnalyzers';
 import { formatDMY } from './GestationalWheelTool';
+import { ChartZoomModal } from './ChartZoomModal';
+import { RADIUS, SHADOWS } from '../../theme';
+
+interface ValidVisitWeight {
+  visitDate: string;
+  poaWeeks: number | null;
+  weightKg: number | null;
+  gainKg: number;
+}
 
 interface MaternalWeightBmiChartProps {
   bookingWeightKg?: number | null;
@@ -33,6 +42,8 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
   visits,
 }) => {
   const [showTable, setShowTable] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedVisit, setSelectedVisit] = useState<ValidVisitWeight | null>(null);
 
   // Compute BMI if missing but weight and height are present
   const calculatedBmi =
@@ -46,57 +57,30 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
   const bmiInfo = BMI_GUIDELINES[bmiCat];
 
   // Filter valid visits with weight measurements
-  const validVisits = visits
-    .filter((v) => typeof v.poa_weeks === 'number' && typeof v.weight_kg === 'number')
+  const validVisits: ValidVisitWeight[] = visits
+    .filter((v): v is typeof v & { poa_weeks: number; weight_kg: number } =>
+      typeof v.poa_weeks === 'number' && typeof v.weight_kg === 'number'
+    )
     .map((v) => ({
       visitDate: v.visit_date,
       poaWeeks: v.poa_weeks,
       weightKg: v.weight_kg,
-      gainKg: +(v.weight_kg! - baseWeight).toFixed(1),
+      gainKg: +(v.weight_kg - baseWeight).toFixed(1),
     }))
     .sort((a, b) => (a.poaWeeks || 0) - (b.poaWeeks || 0));
 
   const analysis = analyzeWeightGain(baseWeight, calculatedBmi, validVisits);
 
   const screenWidth = Dimensions.get('window').width;
-  const chartWidth = screenWidth - 32;
-  const chartHeight = 200;
-
-  const padLeft = 36;
-  const padRight = 16;
-  const padTop = 18;
-  const padBottom = 26;
+  const defaultWidth = Math.max(300, screenWidth - 32);
+  const defaultHeight = 220;
 
   const minX = 12;
   const maxX = 40;
   const minY = -2;
   const maxY = 22;
 
-  const plotW = chartWidth - padLeft - padRight;
-  const plotH = chartHeight - padTop - padBottom;
-
-  const getX = (w: number) => padLeft + ((w - minX) / (maxX - minX)) * plotW;
-  const getY = (kg: number) => padTop + plotH - ((kg - minY) / (maxY - minY)) * plotH;
-
-  // Build corridor points at intervals 12, 16, 20, 24, 28, 32, 36, 40 weeks
   const sampleWeeks = [12, 16, 20, 24, 28, 32, 36, 40];
-  const corridorPts = sampleWeeks.map((w) => {
-    const c = getWeightGainCorridor(calculatedBmi, w);
-    return { week: w, min: c.minGain, max: c.maxGain, target: c.targetGain };
-  });
-
-  const minGainPoints = corridorPts.map((p) => `${getX(p.week)},${getY(p.min)}`);
-  const maxGainPointsRev = [...corridorPts].reverse().map((p) => `${getX(p.week)},${getY(p.max)}`);
-  const corridorPath = `M ${minGainPoints.join(' L ')} L ${maxGainPointsRev.join(' L ')} Z`;
-  const targetLinePath = corridorPts
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.target)}`)
-    .join(' ');
-
-  // Patient weight gain line
-  const patientPath = validVisits
-    .filter((v) => (v.poaWeeks || 0) >= 12)
-    .map((v, i) => `${i === 0 ? 'M' : 'L'} ${getX(v.poaWeeks!)} ${getY(v.gainKg)}`)
-    .join(' ');
 
   const getBmiBadgeStyle = () => {
     switch (bmiCat) {
@@ -113,11 +97,255 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
 
   const badgeTheme = getBmiBadgeStyle();
 
+  const renderBmiSvg = (width: number, height: number, interactive = false) => {
+    const padLeft = 38;
+    const padRight = 20;
+    const padTop = 18;
+    const padBottom = 26;
+
+    const plotW = width - padLeft - padRight;
+    const plotH = height - padTop - padBottom;
+
+    const getX = (w: number) => padLeft + ((w - minX) / (maxX - minX)) * plotW;
+    const getY = (kg: number) => padTop + plotH - ((kg - minY) / (maxY - minY)) * plotH;
+
+    const corridorPts = sampleWeeks.map((w) => {
+      const c = getWeightGainCorridor(calculatedBmi, w);
+      return { week: w, min: c.minGain, max: c.maxGain, target: c.targetGain };
+    });
+
+    const minGainPoints = corridorPts.map((p) => `${getX(p.week)},${getY(p.min)}`);
+    const maxGainPointsRev = [...corridorPts].reverse().map((p) => `${getX(p.week)},${getY(p.max)}`);
+    const corridorPath = `M ${minGainPoints.join(' L ')} L ${maxGainPointsRev.join(' L ')} Z`;
+    const targetLinePath = corridorPts
+      .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.target)}`)
+      .join(' ');
+
+    const patientPath = validVisits
+      .filter((v) => (v.poaWeeks || 0) >= 12)
+      .map((v, i) => `${i === 0 ? 'M' : 'L'} ${getX(v.poaWeeks!)} ${getY(v.gainKg)}`)
+      .join(' ');
+
+    const weeksToShow = width > 500
+      ? [12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40]
+      : sampleWeeks;
+
+    return (
+      <Svg width={width} height={height}>
+        {/* Y-axis grid lines (0, 5, 10, 15, 20 kg gain) */}
+        {[0, 5, 10, 15, 20].map((kg) => {
+          const y = getY(kg);
+          return (
+            <G key={`grid-y-${kg}`}>
+              <Line
+                x1={padLeft}
+                y1={y}
+                x2={width - padRight}
+                y2={y}
+                stroke={kg === 0 ? '#CBD5E1' : '#F1F5F9'}
+                strokeWidth={kg === 0 ? 1.5 : 1}
+              />
+              <SvgText
+                x={padLeft - 6}
+                y={y + 4}
+                fontSize={10}
+                fontWeight="600"
+                fill="#64748B"
+                textAnchor="end"
+              >
+                {kg > 0 ? `+${kg}` : `${kg}`}
+              </SvgText>
+            </G>
+          );
+        })}
+
+        {/* X-axis grid lines */}
+        {weeksToShow.map((w) => {
+          const x = getX(w);
+          return (
+            <G key={`grid-x-${w}`}>
+              <Line
+                x1={x}
+                y1={padTop}
+                x2={x}
+                y2={height - padBottom}
+                stroke="#F1F5F9"
+                strokeWidth={1}
+              />
+              <SvgText
+                x={x}
+                y={height - padBottom + 16}
+                fontSize={10}
+                fontWeight="600"
+                fill="#64748B"
+                textAnchor="middle"
+              >
+                {w}w
+              </SvgText>
+            </G>
+          );
+        })}
+
+        {/* Shaded Normal Weight Gain Corridor */}
+        <Path d={corridorPath} fill="rgba(14, 165, 233, 0.15)" />
+
+        {/* Min & Max Corridor Boundaries */}
+        <Path
+          d={corridorPts
+            .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.min)}`)
+            .join(' ')}
+          stroke="#0284C7"
+          strokeWidth={1.5}
+          strokeDasharray="4, 3"
+          fill="none"
+        />
+        <Path
+          d={corridorPts
+            .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.max)}`)
+            .join(' ')}
+          stroke="#0284C7"
+          strokeWidth={1.5}
+          strokeDasharray="4, 3"
+          fill="none"
+        />
+
+        {/* Target Gain Median Line */}
+        <Path d={targetLinePath} stroke="#0369A1" strokeWidth={2} fill="none" />
+
+        {/* Patient Gain Line */}
+        {validVisits.length > 1 && (
+          <Path
+            d={patientPath}
+            stroke="#E11D48"
+            strokeWidth={3}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+
+        {/* Patient Data Points */}
+        {validVisits.map((v, i) => {
+          const cx = getX(v.poaWeeks!);
+          const cy = getY(v.gainKg);
+          const isLatest = i === validVisits.length - 1;
+          const isSelected = selectedVisit?.visitDate === v.visitDate;
+
+          return (
+            <G
+              key={`pt-${i}`}
+              onPress={() => interactive && setSelectedVisit(v)}
+            >
+              {isSelected && (
+                <Circle
+                  cx={cx}
+                  cy={cy}
+                  r={12}
+                  fill="rgba(225, 29, 72, 0.25)"
+                />
+              )}
+              <Circle
+                cx={cx}
+                cy={cy}
+                r={isSelected ? 7 : isLatest ? 6 : 4.5}
+                fill={isSelected ? '#BE123C' : isLatest ? '#E11D48' : '#F43F5E'}
+                stroke="#FFFFFF"
+                strokeWidth={2}
+              />
+              <SvgText
+                x={cx}
+                y={cy - 8}
+                fontSize={isSelected ? 11 : 9}
+                fontWeight="bold"
+                fill={isSelected ? '#BE123C' : '#1E293B'}
+                textAnchor="middle"
+              >
+                {v.gainKg > 0 ? `+${v.gainKg}` : v.gainKg}
+              </SvgText>
+            </G>
+          );
+        })}
+      </Svg>
+    );
+  };
+
+  const renderLegend = () => (
+    <View style={styles.legendRow}>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#E11D48' }]} />
+        <Text style={styles.legendText}>Actual Gain (මවගේ බර වැඩිවීම)</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: '#0369A1' }]} />
+        <Text style={styles.legendText}>Target Median</Text>
+      </View>
+      <View style={styles.legendItem}>
+        <View style={[styles.legendBox, { backgroundColor: 'rgba(14, 165, 233, 0.3)' }]} />
+        <Text style={styles.legendText}>Healthy Gain Corridor</Text>
+      </View>
+    </View>
+  );
+
+  const renderAssessment = () => (
+    <View
+      style={[
+        styles.alertBanner,
+        analysis.status === 'OPTIMAL' && styles.alertOptimal,
+        analysis.status === 'BELOW_TARGET' && styles.alertBelow,
+        analysis.status === 'EXCESSIVE' && styles.alertExcessive,
+      ]}
+    >
+      <Text style={styles.alertIcon}>
+        {analysis.status === 'OPTIMAL' ? '✓' : '⚠️'}
+      </Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.alertTextEn}>{analysis.messageEn}</Text>
+        <Text style={styles.alertTextSi}>{analysis.messageSi}</Text>
+      </View>
+    </View>
+  );
+
+  const renderTable = () => {
+    if (validVisits.length === 0) return null;
+    return (
+      <View style={styles.tableWrapper}>
+        <View style={styles.tableHeaderRow}>
+          <Text style={[styles.thText, { flex: 1.2 }]}>Date</Text>
+          <Text style={[styles.thText, { flex: 1 }]}>POA</Text>
+          <Text style={[styles.thText, { flex: 1.2 }]}>Weight (kg)</Text>
+          <Text style={[styles.thText, { flex: 1.2 }]}>Gain (kg)</Text>
+        </View>
+        {validVisits.map((v, i) => (
+          <TouchableOpacity
+            key={`weight-row-${i}`}
+            style={[
+              styles.tableDataRow,
+              selectedVisit?.visitDate === v.visitDate && { backgroundColor: '#EFF6FF' },
+            ]}
+            onPress={() => setSelectedVisit(v)}
+          >
+            <Text style={[styles.tdText, { flex: 1.2 }]}>{formatDMY(v.visitDate)}</Text>
+            <Text style={[styles.tdText, { flex: 1, fontWeight: '700' }]}>{v.poaWeeks}w</Text>
+            <Text style={[styles.tdText, { flex: 1.2 }]}>{v.weightKg} kg</Text>
+            <Text
+              style={[
+                styles.tdText,
+                { flex: 1.2, fontWeight: '800', color: '#E11D48' },
+              ]}
+            >
+              {v.gainKg > 0 ? `+${v.gainKg}` : v.gainKg} kg
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
   return (
     <View style={styles.card}>
       {/* Header */}
       <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, marginRight: 8 }}>
           <View style={styles.badgeRow}>
             <Text style={styles.title}>Maternal Weight Gain & BMI</Text>
             <View
@@ -135,6 +363,13 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
             මව්ගේ බර වැඩිවීම හා BMI ප්‍රස්තාරය • Booking: {baseWeight} kg
           </Text>
         </View>
+        <TouchableOpacity
+          style={styles.expandBtn}
+          onPress={() => setIsFullscreen(true)}
+          accessibilityLabel="Expand and zoom maternal weight chart"
+        >
+          <Text style={styles.expandBtnText}>🔍 විශාල කර බලන්න</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Target recommendation info strip */}
@@ -158,164 +393,15 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
       </View>
 
       {/* Clinical Assessment Alert */}
-      <View
-        style={[
-          styles.alertBanner,
-          analysis.status === 'OPTIMAL' && styles.alertOptimal,
-          analysis.status === 'BELOW_TARGET' && styles.alertBelow,
-          analysis.status === 'EXCESSIVE' && styles.alertExcessive,
-        ]}
-      >
-        <Text style={styles.alertIcon}>
-          {analysis.status === 'OPTIMAL' ? '✓' : '⚠️'}
-        </Text>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.alertTextEn}>{analysis.messageEn}</Text>
-          <Text style={styles.alertTextSi}>{analysis.messageSi}</Text>
-        </View>
-      </View>
+      {renderAssessment()}
 
       {/* SVG Canvas */}
       <View style={styles.svgWrapper}>
-        <Svg width={chartWidth} height={chartHeight}>
-          {/* Y-axis grid lines (0, 5, 10, 15, 20 kg gain) */}
-          {[0, 5, 10, 15, 20].map((kg) => {
-            const y = getY(kg);
-            return (
-              <G key={`grid-y-${kg}`}>
-                <Line
-                  x1={padLeft}
-                  y1={y}
-                  x2={chartWidth - padRight}
-                  y2={y}
-                  stroke={kg === 0 ? '#CBD5E1' : '#F1F5F9'}
-                  strokeWidth={kg === 0 ? 1.5 : 1}
-                />
-                <SvgText
-                  x={padLeft - 6}
-                  y={y + 4}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="end"
-                >
-                  {kg > 0 ? `+${kg}` : `${kg}`}
-                </SvgText>
-              </G>
-            );
-          })}
-
-          {/* X-axis grid lines (12, 16, 20, 24, 28, 32, 36, 40 weeks) */}
-          {sampleWeeks.map((w) => {
-            const x = getX(w);
-            return (
-              <G key={`grid-x-${w}`}>
-                <Line
-                  x1={x}
-                  y1={padTop}
-                  x2={x}
-                  y2={chartHeight - padBottom}
-                  stroke="#F1F5F9"
-                  strokeWidth={1}
-                />
-                <SvgText
-                  x={x}
-                  y={chartHeight - padBottom + 16}
-                  fontSize={10}
-                  fontWeight="600"
-                  fill="#64748B"
-                  textAnchor="middle"
-                >
-                  {w}w
-                </SvgText>
-              </G>
-            );
-          })}
-
-          {/* Shaded Normal Weight Gain Corridor */}
-          <Path d={corridorPath} fill="rgba(14, 165, 233, 0.15)" />
-
-          {/* Min & Max Corridor Boundaries */}
-          <Path
-            d={corridorPts
-              .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.min)}`)
-              .join(' ')}
-            stroke="#0284C7"
-            strokeWidth={1.5}
-            strokeDasharray="4, 3"
-            fill="none"
-          />
-          <Path
-            d={corridorPts
-              .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(p.week)} ${getY(p.max)}`)
-              .join(' ')}
-            stroke="#0284C7"
-            strokeWidth={1.5}
-            strokeDasharray="4, 3"
-            fill="none"
-          />
-
-          {/* Target Gain Median Line */}
-          <Path d={targetLinePath} stroke="#0369A1" strokeWidth={2} fill="none" />
-
-          {/* Patient Gain Line */}
-          {validVisits.length > 1 && (
-            <Path
-              d={patientPath}
-              stroke="#E11D48"
-              strokeWidth={3}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-
-          {/* Patient Data Points */}
-          {validVisits.map((v, i) => {
-            const cx = getX(v.poaWeeks!);
-            const cy = getY(v.gainKg);
-            const isLatest = i === validVisits.length - 1;
-            return (
-              <G key={`pt-${i}`}>
-                <Circle
-                  cx={cx}
-                  cy={cy}
-                  r={isLatest ? 6 : 4.5}
-                  fill={isLatest ? '#E11D48' : '#F43F5E'}
-                  stroke="#FFFFFF"
-                  strokeWidth={2}
-                />
-                <SvgText
-                  x={cx}
-                  y={cy - 8}
-                  fontSize={9}
-                  fontWeight="bold"
-                  fill="#1E293B"
-                  textAnchor="middle"
-                >
-                  {v.gainKg > 0 ? `+${v.gainKg}` : v.gainKg}
-                </SvgText>
-              </G>
-            );
-          })}
-        </Svg>
+        {renderBmiSvg(defaultWidth, defaultHeight, false)}
       </View>
 
       {/* Legend */}
-      <View style={styles.legendRow}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: '#E11D48' }]} />
-          <Text style={styles.legendText}>Actual Gain (මවගේ බර වැඩිවීම)</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: '#0369A1' }]} />
-          <Text style={styles.legendText}>Target Median</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendBox, { backgroundColor: 'rgba(14, 165, 233, 0.3)' }]} />
-          <Text style={styles.legendText}>Healthy Gain Corridor</Text>
-        </View>
-      </View>
+      {renderLegend()}
 
       {/* Toggle Measurements Table */}
       <TouchableOpacity
@@ -327,30 +413,42 @@ export const MaternalWeightBmiChart: React.FC<MaternalWeightBmiChartProps> = ({
         </Text>
       </TouchableOpacity>
 
-      {showTable && validVisits.length > 0 && (
-        <View style={styles.tableWrapper}>
-          <View style={styles.tableHeaderRow}>
-            <Text style={[styles.thText, { flex: 1.2 }]}>Date</Text>
-            <Text style={[styles.thText, { flex: 1 }]}>POA</Text>
-            <Text style={[styles.thText, { flex: 1.2 }]}>Weight (kg)</Text>
-            <Text style={[styles.thText, { flex: 1.2 }]}>Gain (kg)</Text>
-          </View>
-          {validVisits.map((v, i) => (
-            <View key={`weight-row-${i}`} style={styles.tableDataRow}>
-              <Text style={[styles.tdText, { flex: 1.2 }]}>{formatDMY(v.visitDate)}</Text>
-              <Text style={[styles.tdText, { flex: 1, fontWeight: '700' }]}>{v.poaWeeks}w</Text>
-              <Text style={[styles.tdText, { flex: 1.2 }]}>{v.weightKg} kg</Text>
-              <Text
-                style={[
-                  styles.tdText,
-                  { flex: 1.2, fontWeight: '800', color: '#E11D48' },
-                ]}
-              >
-                {v.gainKg > 0 ? `+${v.gainKg}` : v.gainKg} kg
-              </Text>
+      {showTable && renderTable()}
+
+      {/* Zoom Modal */}
+      {isFullscreen && (
+        <ChartZoomModal
+          visible={isFullscreen}
+          onClose={() => {
+            setIsFullscreen(false);
+            setSelectedVisit(null);
+          }}
+          title="Maternal Weight Gain Corridor"
+          subtitle={`Booking: ${baseWeight} kg • BMI ${calculatedBmi} (${bmiInfo.label})`}
+          badgeText={bmiInfo.label}
+          baseWidth={screenWidth - 24}
+          baseHeight={280}
+          initialScale={1.5}
+          renderChart={(_scale, w, h) => renderBmiSvg(w, h, true)}
+          legend={renderLegend()}
+          extraContent={
+            <View>
+              {selectedVisit && (
+                <View style={styles.selectedPointCard}>
+                  <Text style={styles.selectedPointTitle}>📍 තෝරාගත් වාර්තාව (Selected Weight)</Text>
+                  <Text style={styles.selectedPointDetails}>
+                    දිනය: <Text style={{ fontWeight: '700' }}>{formatDMY(selectedVisit.visitDate)}</Text> • 
+                    සති: <Text style={{ fontWeight: '700' }}>{selectedVisit.poaWeeks}w</Text> • 
+                    බර: <Text style={{ fontWeight: '700' }}>{selectedVisit.weightKg} kg</Text> • 
+                    වැඩිවීම: <Text style={{ fontWeight: '800', color: '#E11D48' }}>{selectedVisit.gainKg > 0 ? `+${selectedVisit.gainKg}` : selectedVisit.gainKg} kg</Text>
+                  </Text>
+                </View>
+              )}
+              {renderAssessment()}
+              {renderTable()}
             </View>
-          ))}
-        </View>
+          }
+        />
       )}
     </View>
   );
@@ -364,10 +462,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     marginBottom: 16,
+    ...SHADOWS.card,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
     marginBottom: 10,
   },
   badgeRow: {
@@ -377,15 +477,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   title: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#0F172A',
   },
   bmiBadge: {
-    borderWidth: 1,
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
+    borderWidth: 1,
   },
   bmiBadgeText: {
     fontSize: 10,
@@ -395,6 +495,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
+  },
+  expandBtn: {
+    backgroundColor: '#F0FDFA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    alignSelf: 'flex-start',
+    minHeight: 38,
+    justifyContent: 'center',
+  },
+  expandBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0F766E',
   },
   targetStrip: {
     flexDirection: 'row',
@@ -410,49 +526,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   targetLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#64748B',
+    fontWeight: '600',
   },
   targetValue: {
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#0F172A',
-    marginTop: 1,
+    marginTop: 2,
   },
   alertBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 8,
     marginBottom: 10,
-    borderWidth: 1,
     gap: 8,
+    borderWidth: 1,
   },
   alertOptimal: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   alertBelow: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
-  },
-  alertExcessive: {
     backgroundColor: '#FEF2F2',
     borderColor: '#FECACA',
   },
+  alertExcessive: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+  },
   alertIcon: {
     fontSize: 16,
-    fontWeight: 'bold',
   },
   alertTextEn: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1E293B',
+    color: '#0F172A',
   },
   alertTextSi: {
     fontSize: 11,
     color: '#475569',
-    marginTop: 2,
+    marginTop: 1,
   },
   svgWrapper: {
     alignItems: 'center',
@@ -471,7 +587,7 @@ const styles = StyleSheet.create({
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   legendBox: {
     width: 12,
@@ -479,14 +595,14 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   legendText: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#475569',
     fontWeight: '600',
   },
   toggleTableBtn: {
+    marginTop: 10,
+    paddingVertical: 6,
     alignItems: 'center',
-    paddingVertical: 8,
-    marginTop: 6,
   },
   toggleTableText: {
     fontSize: 11,
@@ -494,6 +610,7 @@ const styles = StyleSheet.create({
     color: '#2563EB',
   },
   tableWrapper: {
+    marginTop: 6,
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
     padding: 8,
@@ -510,14 +627,34 @@ const styles = StyleSheet.create({
   thText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#475569',
+    color: '#64748B',
   },
   tableDataRow: {
     flexDirection: 'row',
-    paddingVertical: 3,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    borderRadius: 4,
   },
   tdText: {
     fontSize: 10,
+    color: '#1E293B',
+  },
+  selectedPointCard: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  selectedPointTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E40AF',
+    marginBottom: 2,
+  },
+  selectedPointDetails: {
+    fontSize: 12,
     color: '#1E293B',
   },
 });

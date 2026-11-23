@@ -1,4 +1,5 @@
 export * from './GestationalWheelTool';
+export * from './ChartZoomModal';
 export * from './SfhChart';
 export * from './MaternalWeightBmiChart';
 export * from './CardiffKickChart';
