@@ -27,7 +27,7 @@ import {
   MotherTransferItem,
   SmsLogItem,
 } from '@/lib/types';
-import { formatDate } from '@/lib/dateFormat';
+import { formatDate, formatDateTime } from '@/lib/dateFormat';
 
 export default function SupervisionPage() {
   const { t } = useLanguage();
@@ -265,7 +265,7 @@ export default function SupervisionPage() {
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-bold text-slate-900 dark:text-white">
-                            {ov.overrideDate}
+                            {formatDate(ov.overrideDate)}
                           </span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badge.bg}`}>
                             {badge.label}
@@ -338,7 +338,7 @@ export default function SupervisionPage() {
                       {tr.destinationArea}
                     </td>
                     <td className="py-3 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
-                      {tr.expectedReturnDate || '-'}
+                      {tr.expectedReturnDate ? formatDate(tr.expectedReturnDate) : '-'}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span
@@ -410,7 +410,7 @@ export default function SupervisionPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-center font-mono font-bold">
-                      {sms.dueDate}
+                      {formatDate(sms.dueDate)}
                     </td>
                     <td className="py-3 px-4 text-slate-600 dark:text-slate-300 text-[11px] max-w-sm truncate" title={sms.messageBody}>
                       {sms.messageBody}
@@ -427,7 +427,7 @@ export default function SupervisionPage() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right text-slate-500 font-mono text-[11px]">
-                      {sms.sentAt}
+                      {formatDateTime(sms.sentAt)}
                     </td>
                   </tr>
                 ))}

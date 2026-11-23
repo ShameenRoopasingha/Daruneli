@@ -145,7 +145,7 @@ export const MotherInviteModal: React.FC<MotherInviteModalProps> = ({
       `🔑 ඔබගේ රහස්‍ය ආරාධනා කේතය: *${inviteCode}*\n` +
       `📅 වලංගු කාලය: ${expiresAtDmy} දක්වා.\n\n` +
       `வணக்கம் ${motherName}, தருநெலி (Daruneli) தாய் சேய் போர்ட்டலில் இணையவும். குறியீடு: *${inviteCode}*.\n\n` +
-      `Ministry of Health • Family Health Bureau Sri Lanka • Powered by Bitgard`;
+      `Ministry of Health • Family Health Bureau Sri Lanka • Daruneli Maternal & Child Health System`;
 
     const encoded = encodeURIComponent(message);
     const whatsappUrl = motherPhone

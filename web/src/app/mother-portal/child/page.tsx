@@ -24,6 +24,7 @@ import {
 } from 'recharts';
 import { useMotherPortal } from '@/lib/motherPortalI18n';
 import { MotherPortalData } from '@/lib/motherPortalService';
+import { formatDate } from '@/lib/dateFormat';
 
 export default function MotherChildPage() {
   const router = useRouter();
@@ -223,7 +224,7 @@ export default function MotherChildPage() {
                   <span>{t.baby.vaccineNextDue}</span>
                 </span>
                 <span className="text-xs font-bold text-amber-900 dark:text-amber-100 bg-amber-200/80 dark:bg-amber-900 px-2 py-0.5 rounded-full">
-                  Due: {nextDueVaccines[0].dueDate}
+                  Due: {formatDate(nextDueVaccines[0].dueDate)}
                 </span>
               </div>
               <h3 className="text-sm font-black text-amber-950 dark:text-amber-100">
@@ -261,7 +262,7 @@ export default function MotherChildPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-                      {v.dateAdministered}
+                      {formatDate(v.dateAdministered)}
                     </span>
                   </div>
                 </div>

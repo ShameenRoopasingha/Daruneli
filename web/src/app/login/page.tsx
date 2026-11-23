@@ -181,7 +181,7 @@ export default function LoginPage() {
             MINISTRY OF HEALTH, SRI LANKA
           </p>
           <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium">
-            Powered by Bitgard Pvt Ltd
+            Daruneli Maternal & Child Health System
           </p>
         </div>
       </div>

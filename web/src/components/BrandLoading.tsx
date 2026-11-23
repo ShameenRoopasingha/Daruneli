@@ -114,7 +114,7 @@ export const BrandLoading: React.FC<BrandLoadingProps> = ({
           MINISTRY OF HEALTH, SRI LANKA
         </p>
         <p className="text-[10px] font-medium text-slate-500 mt-0.5">
-          Powered by Bitgard Pvt Ltd
+          Daruneli Maternal & Child Health System
         </p>
       </div>
     </div>

@@ -187,7 +187,7 @@ export default function LoginScreen() {
           )}
         </View>
 
-        {/* Ministry of Health & Bitgard Footer */}
+        {/* Ministry of Health & Daruneli Footer */}
         <View style={styles.footerBrand}>
           <Image
             source={require('@/assets/images/sri-lanka-emblem.png')}
@@ -195,7 +195,7 @@ export default function LoginScreen() {
             resizeMode="contain"
           />
           <Text style={styles.footerMinistry}>MINISTRY OF HEALTH, SRI LANKA</Text>
-          <Text style={styles.footerBitgard}>Powered by Bitgard Pvt Ltd</Text>
+          <Text style={styles.footerBitgard}>Daruneli Maternal & Child Health System</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

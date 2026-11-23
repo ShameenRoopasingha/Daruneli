@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { COLORS } from '../theme';
+import { formatDate } from '../utils/dateFormat';
 import type { AutoPopulatedItem } from '../db/repositories/scheduleRepo';
 
 interface ManualRescheduleModalProps {
@@ -56,8 +57,8 @@ export const ManualRescheduleModal: React.FC<ManualRescheduleModalProps> = ({
     Alert.alert(
       isSi ? 'චාරිකාව මාරු කිරීම තහවුරු කරන්න' : 'Confirm Rescheduling Visit',
       isSi
-        ? `${item.name} සඳහා වූ චාරිකාව ${selectedTargetDate} දිනට මාරු කිරීමට ඔබට අවශ්‍යද?`
-        : `Are you sure you want to move the scheduled visit for ${item.name} to ${selectedTargetDate}?`,
+        ? `${item.name} සඳහා වූ චාරිකාව ${formatDate(selectedTargetDate)} දිනට මාරු කිරීමට ඔබට අවශ්‍යද?`
+        : `Are you sure you want to move the scheduled visit for ${item.name} to ${formatDate(selectedTargetDate)}?`,
       [
         { text: isSi ? 'අවලංගු කරන්න' : 'Cancel', style: 'cancel' },
         {
@@ -140,7 +141,7 @@ export const ManualRescheduleModal: React.FC<ManualRescheduleModalProps> = ({
                     ⏩ {isSi ? 'ලබන සතියට (+7 දින)' : 'Next Week (+7 Days)'}
                   </Text>
                   <Text style={[styles.dayCardDate, selectedTargetDate === nextWeekStr && styles.dayCardDateActive]}>
-                    {nextWeekStr}
+                    {formatDate(nextWeekStr)}
                   </Text>
                 </View>
                 <View style={[styles.radioCircle, selectedTargetDate === nextWeekStr && styles.radioCircleActive]}>

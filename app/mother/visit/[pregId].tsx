@@ -27,6 +27,7 @@ import { VoiceNoteRecorder } from '@/src/components/VoiceNoteRecorder';
 import { calculateRisk, type DangerSign } from '@/src/engine/riskEngine';
 import { calculatePOA } from '@/src/engine/pregnancyCalc';
 import { AntenatalVisitValidationSchema } from '@/src/validations';
+import { parseDmyToIso } from '@/src/utils/dateFormat';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 
 const DANGER_SIGN_OPTIONS: ChipOption[] = [
@@ -46,6 +47,13 @@ const SUPPLEMENT_OPTIONS: ChipOption[] = [
 
 const VISIT_TYPES = ['HOME', 'CLINIC', 'PHONE'] as const;
 
+function toDmy(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
 export default function AntenatalVisitScreen() {
   const { pregId } = useLocalSearchParams<{ pregId: string }>();
   const router = useRouter();
@@ -54,8 +62,7 @@ export default function AntenatalVisitScreen() {
   const [pregnancy, setPregnancy] = useState<Pregnancy | null>(null);
   const [mother, setMother] = useState<MotherWithPregnancy | null>(null);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const [visitDate, setVisitDate] = useState(todayStr);
+  const [visitDate, setVisitDate] = useState(() => toDmy(new Date()));
   const [visitType, setVisitType] = useState<'HOME' | 'CLINIC' | 'PHONE'>('HOME');
   const [weight, setWeight] = useState('65.0');
   const [bpSystolic, setBpSystolic] = useState('120');
@@ -124,18 +131,20 @@ export default function AntenatalVisitScreen() {
   const handleSaveVisit = async (bypassModal = false) => {
     if (!pregnancy || !mother) return;
 
-    const weightNum = parseFloat(weight);
-    const sysNum = parseInt(bpSystolic, 10);
-    const diaNum = parseInt(bpDiastolic, 10);
-    const hbNum = parseFloat(hemoglobin);
+    const parsedDate = parseDmyToIso(visitDate);
+    const visitDateIso = parsedDate ? parsedDate.iso : '';
+    const weightNum = weight.trim() ? parseFloat(weight) : null;
+    const sysNum = bpSystolic.trim() ? Number(bpSystolic.trim()) : NaN;
+    const diaNum = bpDiastolic.trim() ? Number(bpDiastolic.trim()) : NaN;
+    const hbNum = hemoglobin.trim() ? parseFloat(hemoglobin) : null;
 
     // Validate using Zod AntenatalVisitValidationSchema
     const validation = AntenatalVisitValidationSchema.safeParse({
-      visitDate: visitDate.trim(),
+      visitDate: visitDateIso,
       bpSystolic: isNaN(sysNum) ? undefined : sysNum,
       bpDiastolic: isNaN(diaNum) ? undefined : diaNum,
-      weightKg: isNaN(weightNum) ? undefined : weightNum,
-      hemoglobin: isNaN(hbNum) ? undefined : hbNum,
+      weightKg: weightNum !== null ? (isNaN(weightNum) ? (NaN as any) : weightNum) : null,
+      hemoglobin: hbNum !== null ? (isNaN(hbNum) ? (NaN as any) : hbNum) : null,
     });
 
     if (!validation.success) {
@@ -171,7 +180,7 @@ export default function AntenatalVisitScreen() {
       chronicConditions: chronicList,
       bpSystolic: sysNum,
       bpDiastolic: diaNum,
-      hemoglobin: isNaN(hbNum) ? undefined : hbNum,
+      hemoglobin: hbNum !== null && !isNaN(hbNum) ? hbNum : undefined,
     });
 
     // If Urgent Referral Required and not yet acknowledged
@@ -196,13 +205,13 @@ export default function AntenatalVisitScreen() {
       // 1. Create Antenatal Visit Record
       await createVisit({
         pregnancy_id: pregnancy.id,
-        visit_date: visitDate,
+        visit_date: visitDateIso,
         visit_type: visitType,
         poa_weeks: poa.poaWeeks + poa.poaDays / 7,
-        weight_kg: isNaN(weightNum) ? undefined : weightNum,
+        weight_kg: weightNum !== null && !isNaN(weightNum) ? weightNum : undefined,
         bp_systolic: sysNum,
         bp_diastolic: diaNum,
-        hemoglobin: isNaN(hbNum) ? undefined : hbNum,
+        hemoglobin: hbNum !== null && !isNaN(hbNum) ? hbNum : undefined,
         danger_signs: dangerSigns,
         supplements: supplements,
         notes: notes.trim(),
@@ -232,7 +241,7 @@ export default function AntenatalVisitScreen() {
       isSavedRef.current = true;
       Alert.alert(
         t('common.success', 'සාර්ථකයි'),
-        `Visit logged successfully. Risk Level: ${riskResult.level}. Next visit scheduled in ${riskResult.recommendedFollowUpDays} days (${nextDateStr}).`,
+        `Visit logged successfully. Risk Level: ${riskResult.level}. Next visit scheduled in ${riskResult.recommendedFollowUpDays} days (${toDmy(nextDate)}).`,
         [{ text: 'OK', onPress: () => router.back() }]
       );
     } catch (e: any) {
@@ -289,7 +298,7 @@ export default function AntenatalVisitScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Visit Date (YYYY-MM-DD)</Text>
+          <Text style={styles.label}>Visit Date (DD/MM/YYYY) *</Text>
           <TextInput
             style={[styles.input, errors.visitDate ? styles.inputError : null]}
             value={visitDate}
@@ -297,7 +306,7 @@ export default function AntenatalVisitScreen() {
               setVisitDate(v);
               clearError('visitDate');
             }}
-            placeholder="YYYY-MM-DD"
+            placeholder="DD/MM/YYYY"
             placeholderTextColor={COLORS.textTertiary}
           />
           {errors.visitDate ? (

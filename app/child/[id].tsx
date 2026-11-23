@@ -21,15 +21,9 @@ import {
 import { ChdrGrowthCharts, FentonPretermChart } from '@/src/components/charts';
 import { calculateAgeMonths } from '@/src/engine/growthAnalyzer';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
+import { formatDate } from '@/src/utils/dateFormat';
 
-function formatDisplayDate(isoDate?: string | null): string {
-  if (!isoDate) return '';
-  const parts = isoDate.split('-');
-  if (parts.length === 3) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return isoDate;
-}
+const formatDisplayDate = formatDate;
 
 export default function ChildProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -116,7 +110,7 @@ export default function ChildProfileScreen() {
               {child.gender === 'M' ? '👦' : '👧'} {child.full_name}
             </Text>
             <Text style={styles.subText}>
-              Mother: {child.mother_name || 'N/A'} • DOB: {child.dob}
+              Mother: {child.mother_name || 'N/A'} • DOB: {formatDate(child.dob)}
             </Text>
             <Text style={styles.subText}>
               Age: {ageMonths}m ({years > 0 ? `${years}y ` : ''}{remainingMonths}m) • QR: {child.qr_token}

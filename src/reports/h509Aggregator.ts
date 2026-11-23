@@ -1,5 +1,6 @@
 import { getDatabase } from '../db';
 import { calculatePOA, formatPOA } from '../engine/pregnancyCalc';
+import { formatDate, formatDateTime } from '../utils/dateFormat';
 
 export interface H509ReportParams {
   year: number;
@@ -330,7 +331,7 @@ export async function aggregateH509Data(params: H509ReportParams): Promise<H509R
       targetName,
       taskType: t.task_type.replace('_', ' '),
       priority: t.priority,
-      dueDate: t.due_date,
+      dueDate: formatDate(t.due_date),
       notes: t.notes || '',
     });
   }
@@ -340,10 +341,10 @@ export async function aggregateH509Data(params: H509ReportParams): Promise<H509R
       year,
       month,
       monthName,
-      reportingPeriod: `${monthName} ${year} (${startDate} to ${endDate})`,
+      reportingPeriod: `${monthName} ${year} (${formatDate(startDate)} to ${formatDate(endDate)})`,
       phmAreaName: params.phmAreaName || 'Kottawa North (PHM/MAH/01)',
       mohDivision: params.mohDivision || 'Maharagama',
-      generatedAt: nowIso.replace('T', ' ').substring(0, 19),
+      generatedAt: formatDateTime(new Date()),
     },
     section1_antenatal: {
       activePregnantMothers: activeMothersRow?.count || 0,

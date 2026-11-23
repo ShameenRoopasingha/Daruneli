@@ -429,7 +429,7 @@ export function renderH509Html(data: H509ReportData): string {
   </div>
 
   <div class="watermark">
-    Generated automatically via Daruneli (දරුනැලි) Offline-First PHM Digital System on ${metadata.generatedAt}. Form H509 Compliant. • Powered by Bitgard Pvt Ltd
+    Generated automatically via Daruneli (දරුනැලි) Offline-First PHM Digital System on ${metadata.generatedAt}. Form H509 Compliant. • Daruneli Maternal & Child Health System
   </div>
 
 </body>

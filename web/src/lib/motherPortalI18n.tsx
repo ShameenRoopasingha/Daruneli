@@ -124,7 +124,7 @@ export const MOTHER_TRANSLATIONS: Record<MotherLang, MotherPortalDictionary> = {
       name: 'දරුනැලි',
       sub: 'මව් සහ බිළිඳු සහකාරි පෝර්ටලය',
       ministry: 'සෞඛ්‍ය අමාත්‍යාංශය • පවුල් සෞඛ්‍ය කාර්යාංශය',
-      poweredBy: 'Powered by Bitgard Pvt Ltd',
+      poweredBy: 'Daruneli Maternal & Child Health System',
     },
     nav: {
       home: 'මුල් පිටුව',
@@ -237,7 +237,7 @@ export const MOTHER_TRANSLATIONS: Record<MotherLang, MotherPortalDictionary> = {
       name: 'தருநெலி',
       sub: 'தாய் சேய் நல்வாழ்வு போர்ட்டல்',
       ministry: 'சுகாதார அமைச்சு • குடும்ப சுகாதாரப் பணியகம்',
-      poweredBy: 'Powered by Bitgard Pvt Ltd',
+      poweredBy: 'Daruneli Maternal & Child Health System',
     },
     nav: {
       home: 'முகப்பு',
@@ -350,7 +350,7 @@ export const MOTHER_TRANSLATIONS: Record<MotherLang, MotherPortalDictionary> = {
       name: 'Daruneli',
       sub: 'Mother Companion Portal',
       ministry: 'Ministry of Health • Family Health Bureau',
-      poweredBy: 'Powered by Bitgard Pvt Ltd',
+      poweredBy: 'Daruneli Maternal & Child Health System',
     },
     nav: {
       home: 'Home',

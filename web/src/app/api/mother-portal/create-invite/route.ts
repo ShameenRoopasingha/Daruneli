@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma, isPrismaConfigured } from '@/lib/prisma';
 import { getAdminClient, isAdminConfigured } from '@/lib/supabaseAdmin';
 import { CreateInviteSchema } from '@/lib/validations';
 
@@ -36,7 +37,100 @@ export async function POST(req: NextRequest) {
 
     const { motherId, phmAreaId } = parseResult.data;
 
-    // Demo Mode fallback
+    // 1. Prisma ORM Integration (Primary)
+    if (isPrismaConfigured()) {
+      let mother = null;
+      try {
+        mother = await prisma.mother.findUnique({
+          where: { id: motherId },
+        });
+      } catch (err) {
+        console.warn('Prisma mother query error:', err);
+      }
+
+      if (!mother) {
+        return NextResponse.json(
+          { success: false, message: 'Mother record not found.' },
+          { status: 404 }
+        );
+      }
+
+      const areaId = phmAreaId || mother.phmAreaId;
+
+      // Check for an existing unexpired, unclaimed invite
+      const existingInvite = await prisma.motherPortalInvite.findFirst({
+        where: {
+          motherId,
+          claimedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (existingInvite) {
+        return NextResponse.json({
+          success: true,
+          invite_code: existingInvite.inviteCode,
+          expires_at: existingInvite.expiresAt.toISOString(),
+          qr_url: `/mother-portal/join?code=${existingInvite.inviteCode}`,
+        });
+      }
+
+      // Generate unique invite code
+      let code = generateInviteCode();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const exists = await prisma.motherPortalInvite.findUnique({
+          where: { inviteCode: code },
+          select: { id: true },
+        });
+        if (!exists) break;
+        code = generateInviteCode();
+      }
+
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      // Create the invite using prisma.motherPortalInvite.create
+      const newInvite = await prisma.motherPortalInvite.create({
+        data: {
+          motherId,
+          phmAreaId: areaId || null,
+          inviteCode: code,
+          expiresAt,
+          claimedAt: null,
+        },
+        select: {
+          id: true,
+          inviteCode: true,
+          expiresAt: true,
+        },
+      });
+
+      // Log audit entry if appropriate
+      try {
+        await prisma.userAuditLog.create({
+          data: {
+            action: 'CREATE_MOTHER_PORTAL_INVITE',
+            detailsJson: JSON.stringify({
+              motherId,
+              phmAreaId: areaId || null,
+              inviteCode: newInvite.inviteCode,
+              expiresAt: newInvite.expiresAt.toISOString(),
+            }),
+          },
+        });
+      } catch (auditErr) {
+        console.warn('Non-fatal: failed to record user audit log for invite creation', auditErr);
+      }
+
+      return NextResponse.json({
+        success: true,
+        invite_code: newInvite.inviteCode,
+        expires_at: newInvite.expiresAt.toISOString(),
+        qr_url: `/mother-portal/join?code=${newInvite.inviteCode}`,
+      });
+    }
+
+    // 2. Demo Mode fallback (when neither Prisma nor Supabase Admin is configured)
     if (!isAdminConfigured()) {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
       let code = 'DRN-74K';
@@ -54,9 +148,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // 3. Supabase fallback
     const admin = getAdminClient();
 
-    // 1. Check if mother exists
+    // Check if mother exists
     const { data: mother, error: mErr } = await admin
       .from('mothers')
       .select('id, full_name, phm_area_id, auth_user_id')
@@ -72,7 +167,7 @@ export async function POST(req: NextRequest) {
 
     const areaId = phmAreaId || mother.phm_area_id;
 
-    // 2. Check for active unexpired unused invite
+    // Check for active unexpired unused invite
     const nowIso = new Date().toISOString();
     const { data: activeInvites } = await admin
       .from('mother_portal_invites')
@@ -93,7 +188,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 3. Generate unique invite code
+    // Generate unique invite code
     let code = generateInviteCode();
     for (let attempt = 0; attempt < 5; attempt++) {
       const { data: exists } = await admin

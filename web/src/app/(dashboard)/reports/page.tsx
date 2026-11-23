@@ -237,7 +237,7 @@ export default function H509ReportsPage() {
                   DARUNELI DIGITAL HEALTH SYSTEM
                 </span>
                 <span className="text-[10px] text-slate-500 font-medium">
-                  Form H509 Return • Powered by Bitgard Pvt Ltd
+                  Form H509 Return • Daruneli Maternal & Child Health System
                 </span>
               </div>
             </div>
@@ -431,7 +431,7 @@ export default function H509ReportsPage() {
                         </span>
                       </td>
                       <td className="py-2 px-3 text-slate-600 dark:text-slate-300">{m.riskFactors.join(', ')}</td>
-                      <td className="py-2 px-3 text-right font-mono">{m.eddDate}</td>
+                      <td className="py-2 px-3 text-right font-mono">{formatDate(m.eddDate)}</td>
                     </tr>
                   ))}
                 </tbody>

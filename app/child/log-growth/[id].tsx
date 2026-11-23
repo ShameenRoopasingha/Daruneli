@@ -29,6 +29,7 @@ import {
   type GrowthRecord,
 } from '@/src/engine/growthAnalyzer';
 import { GrowthLogValidationSchema } from '@/src/validations';
+import { parseDmyToIso } from '@/src/utils/dateFormat';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 
 const MILESTONE_OPTIONS: ChipOption[] = [
@@ -49,15 +50,30 @@ const SUPPLEMENT_OPTIONS: ChipOption[] = [
   { value: 'MICRONUTRIENT_POWDER', label: 'MNP (Nutrimix)' },
 ];
 
+function toDmy(date: Date): string {
+  const d = String(date.getDate()).padStart(2, '0');
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
+function formatDisplayDate(isoDate?: string | null): string {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return isoDate;
+}
+
 export default function LogGrowthScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { t } = useTranslation();
 
   const [child, setChild] = useState<Child | null>(null);
-  const todayStr = new Date().toISOString().split('T')[0];
 
-  const [recordedDate, setRecordedDate] = useState(todayStr);
+  const [recordedDate, setRecordedDate] = useState(() => toDmy(new Date()));
   const [weight, setWeight] = useState('10.0');
   const [height, setHeight] = useState('80.0');
   const [milestones, setMilestones] = useState<string[]>([]);
@@ -96,14 +112,16 @@ export default function LogGrowthScreen() {
   const handleSaveGrowth = async () => {
     if (!child) return;
 
-    const weightNum = parseFloat(weight);
-    const heightNum = parseFloat(height);
+    const parsedDate = parseDmyToIso(recordedDate);
+    const recordedDateIso = parsedDate ? parsedDate.iso : '';
+    const weightNum = weight.trim() ? parseFloat(weight) : NaN;
+    const heightNum = height.trim() ? parseFloat(height) : null;
 
     // Validate using Zod GrowthLogValidationSchema
     const validation = GrowthLogValidationSchema.safeParse({
-      recordedDate: recordedDate.trim(),
+      recordedDate: recordedDateIso,
       weightKg: isNaN(weightNum) ? undefined : weightNum,
-      heightCm: isNaN(heightNum) ? null : heightNum,
+      heightCm: heightNum !== null ? (isNaN(heightNum) ? (NaN as any) : heightNum) : null,
     });
 
     if (!validation.success) {
@@ -123,8 +141,9 @@ export default function LogGrowthScreen() {
     try {
       setIsSubmitting(true);
 
+      const parsedRecordedDate = parsedDate!.date;
       const dob = new Date(child.dob);
-      const ageMonths = calculateAgeMonths(dob, new Date(recordedDate));
+      const ageMonths = calculateAgeMonths(dob, parsedRecordedDate);
 
       // 1. Fetch previous growth records to feed into the growthAnalyzer
       const prevRecords = await getGrowthRecords(child.id);
@@ -139,10 +158,10 @@ export default function LogGrowthScreen() {
       const allRecords: GrowthRecord[] = [
         ...mappedPrev,
         {
-          recordedDate: new Date(recordedDate),
+          recordedDate: parsedRecordedDate,
           ageMonths,
           weightKg: weightNum,
-          heightCm: isNaN(heightNum) ? undefined : heightNum,
+          heightCm: heightNum !== null && !isNaN(heightNum) ? heightNum : undefined,
         },
       ];
 
@@ -153,10 +172,10 @@ export default function LogGrowthScreen() {
       // 3. Save Growth Record
       await createGrowthRecord({
         child_id: child.id,
-        recorded_date: recordedDate,
+        recorded_date: recordedDateIso,
         age_months: ageMonths,
         weight_kg: weightNum,
-        height_cm: isNaN(heightNum) ? undefined : heightNum,
+        height_cm: heightNum !== null && !isNaN(heightNum) ? heightNum : undefined,
         milestones,
         supplements,
       });
@@ -218,7 +237,7 @@ export default function LogGrowthScreen() {
             {child.gender === 'M' ? '👦' : '👧'} {child.full_name}
           </Text>
           <Text style={styles.summarySub}>
-            DOB: {child.dob} • Mother: {child.mother_name || 'N/A'}
+            DOB: {formatDisplayDate(child.dob)} • Mother: {child.mother_name || 'N/A'}
           </Text>
         </View>
       )}
@@ -231,7 +250,7 @@ export default function LogGrowthScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>Recorded Date (YYYY-MM-DD)</Text>
+          <Text style={styles.label}>Recorded Date (DD/MM/YYYY) *</Text>
           <TextInput
             style={[styles.input, errors.recordedDate ? styles.inputError : null]}
             value={recordedDate}
@@ -239,7 +258,7 @@ export default function LogGrowthScreen() {
               setRecordedDate(v);
               clearError('recordedDate');
             }}
-            placeholder="YYYY-MM-DD"
+            placeholder="DD/MM/YYYY"
             placeholderTextColor={COLORS.textTertiary}
           />
           {errors.recordedDate ? (

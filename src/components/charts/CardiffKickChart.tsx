@@ -16,6 +16,7 @@ import { addKickLog } from '../../db/clinicalChartRepo';
 import { ChartZoomModal } from './ChartZoomModal';
 import { RADIUS, SHADOWS } from '../../theme';
 import { formatDMY } from './GestationalWheelTool';
+import { formatDate, parseDmyToIso } from '../../utils/dateFormat';
 
 interface CardiffKickChartProps {
   pregnancyId: string;
@@ -34,7 +35,7 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<KickLogInput | null>(null);
 
-  const [logDate, setLogDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [logDate, setLogDate] = useState(() => formatDate(new Date()));
   const [startTime, setStartTime] = useState('09:00');
   const [tenthKickTime, setTenthKickTime] = useState('11:30');
   const [kickCount, setKickCount] = useState('10');
@@ -73,9 +74,15 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
     const performSave = async () => {
       setIsSaving(true);
       try {
+        let saveDate = logDate;
+        const parsed = parseDmyToIso(logDate);
+        if (parsed) {
+          saveDate = parsed.iso;
+        }
+
         await addKickLog({
           pregnancy_id: pregnancyId,
-          log_date: logDate,
+          log_date: saveDate,
           start_time: startTime,
           tenth_kick_time: tenthKickTime,
           kick_count: count,
@@ -402,12 +409,12 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.formLabel}>Date (YYYY-MM-DD)</Text>
+              <Text style={styles.formLabel}>Date (DD/MM/YYYY)</Text>
               <TextInput
                 style={styles.input}
                 value={logDate}
                 onChangeText={setLogDate}
-                placeholder="2026-11-23"
+                placeholder="23/11/2026"
               />
 
               <View style={styles.rowInputs}>

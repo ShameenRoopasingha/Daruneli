@@ -17,6 +17,7 @@ import {
 import { useMotherPortal } from '@/lib/motherPortalI18n';
 import { MotherPortalData } from '@/lib/motherPortalService';
 import { DigitalClinicCardModal } from '@/components/mother-portal/DigitalClinicCardModal';
+import { formatDate } from '@/lib/dateFormat';
 
 export default function MotherHomePage() {
   const router = useRouter();
@@ -170,7 +171,7 @@ export default function MotherHomePage() {
               {t.home.nextHomeVisit}
             </h3>
             <p className="text-[11px] font-semibold text-teal-700 dark:text-teal-400 mt-0.5">
-              {upcomingSchedule.nextVisitDate}
+              {formatDate(upcomingSchedule.nextVisitDate)}
             </p>
           </div>
         </div>
@@ -254,7 +255,7 @@ export default function MotherHomePage() {
             <p className="text-[10px] text-slate-400">{t.home.vitalsSub}</p>
           </div>
           <span className="text-[11px] font-bold text-teal-700 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/80 px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
-            {latestVitals.visitDate}
+            {formatDate(latestVitals.visitDate)}
           </span>
         </div>
 

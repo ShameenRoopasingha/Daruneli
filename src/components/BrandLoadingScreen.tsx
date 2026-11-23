@@ -193,7 +193,7 @@ export const BrandLoadingScreen: React.FC<BrandLoadingScreenProps> = ({
           </View>
         </View>
 
-        {/* Pinned Ministry of Health + Bitgard Footer */}
+        {/* Pinned Ministry of Health + Daruneli Footer */}
         <View style={[styles.footerBlock, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <Image
             source={require('../../assets/images/sri-lanka-emblem.png')}
@@ -201,7 +201,7 @@ export const BrandLoadingScreen: React.FC<BrandLoadingScreenProps> = ({
             resizeMode="contain"
           />
           <Text style={styles.ministryText}>MINISTRY OF HEALTH, SRI LANKA</Text>
-          <Text style={styles.bitgardText}>Powered by Bitgard Pvt Ltd</Text>
+          <Text style={styles.bitgardText}>Daruneli Maternal & Child Health System</Text>
         </View>
       </Animated.View>
     </View>
