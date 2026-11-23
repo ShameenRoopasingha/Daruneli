@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   CalendarDays,
   MapPin,
+  Users,
   ShieldCheck,
   Stethoscope,
   LogOut,
@@ -60,6 +61,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       href: '/areas',
       label: t('nav.areas'),
       icon: MapPin,
+      badge: null,
+    },
+    {
+      href: '/users',
+      label: t('nav.users'),
+      icon: Users,
       badge: null,
     },
   ];

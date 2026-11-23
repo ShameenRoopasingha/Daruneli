@@ -29,6 +29,23 @@ function isValidUuid(val: any): boolean {
   return typeof val === 'string' && UUID_REGEX.test(val);
 }
 
+function isAuthOrDeactivatedError(err: any): boolean {
+  if (!err) return false;
+  const msg = (err.message || '').toLowerCase();
+  const status = err.status || 0;
+  const code = err.code || '';
+  return (
+    status === 401 ||
+    status === 403 ||
+    code === 'PGRST301' ||
+    msg.includes('banned') ||
+    msg.includes('deactivated') ||
+    msg.includes('user not found') ||
+    msg.includes('jwt expired')
+  );
+}
+
+
 // Tables that contain JSON columns in SQLite that should be parsed into JSON objects for Postgres jsonb
 const JSON_COLUMNS_BY_TABLE: Record<string, string[]> = {
   mothers: ['chronic_conditions_json'],
@@ -155,6 +172,20 @@ export async function runFullSync(): Promise<SyncResult> {
     };
   }
 
+  // 2b. Guard: Verify user account status and ensure account is not deactivated or banned
+  const { error: userError } = await supabase.auth.getUser();
+  if (userError && isAuthOrDeactivatedError(userError)) {
+    await setSyncMeta('last_sync_status', 'ACCOUNT_DEACTIVATED');
+    return {
+      success: false,
+      message: 'Staff account deactivated or session expired — your local clinical records are safely preserved. Please contact your MOH office.',
+      pushedCount: 0,
+      pulledCount: 0,
+      timestamp,
+      errors: [userError.message],
+    };
+  }
+
   // 3. Concurrency Lock: Prevent overlapping sync executions
   if (isSyncLocked) {
     return {
@@ -214,6 +245,17 @@ export async function runFullSync(): Promise<SyncResult> {
               .upsert(payload, { onConflict: 'id' });
 
             if (error) {
+              if (isAuthOrDeactivatedError(error)) {
+                await setSyncMeta('last_sync_status', 'ACCOUNT_DEACTIVATED');
+                return {
+                  success: false,
+                  message: 'Staff account deactivated or access revoked. Local records are safely preserved. Please contact your MOH office.',
+                  pushedCount: totalPushed,
+                  pulledCount: totalPulled,
+                  timestamp,
+                  errors: [error.message],
+                };
+              }
               console.error(`Error pushing ${table} to Supabase:`, error);
               syncErrors.push(`${table} push: ${error.message}`);
             } else {
@@ -246,6 +288,17 @@ export async function runFullSync(): Promise<SyncResult> {
         const { data: remoteRows, error } = await query;
 
         if (error) {
+          if (isAuthOrDeactivatedError(error)) {
+            await setSyncMeta('last_sync_status', 'ACCOUNT_DEACTIVATED');
+            return {
+              success: false,
+              message: 'Staff account deactivated or access revoked. Local records are safely preserved. Please contact your MOH office.',
+              pushedCount: totalPushed,
+              pulledCount: totalPulled,
+              timestamp,
+              errors: [error.message],
+            };
+          }
           console.error(`Error pulling ${table} from Supabase:`, error);
           syncErrors.push(`${table} pull: ${error.message}`);
         } else if (remoteRows && remoteRows.length > 0) {

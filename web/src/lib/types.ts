@@ -211,3 +211,42 @@ export interface SmsLogItem {
   providerStatus: 'SENT' | 'DELIVERED' | 'FAILED' | 'DRY_RUN';
   sentAt: string; // DD/MM/YYYY HH:mm
 }
+
+export interface StaffMember {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  employeeId: string;
+  role: OfficerRole;
+  phmAreaId?: string | null;
+  phmAreaCode?: string | null;
+  phmAreaName?: string | null;
+  mohDivision: string;
+  preferredLang: 'si' | 'ta' | 'en';
+  isActive: boolean;
+  deactivatedAt?: string | null;
+  lastSignInAt?: string | null;
+  createdAt: string;
+}
+
+export type UserAuditAction =
+  | 'CREATE_USER'
+  | 'UPDATE_USER'
+  | 'REASSIGN_AREA'
+  | 'DEACTIVATE_USER'
+  | 'REACTIVATE_USER'
+  | 'RESET_PASSWORD';
+
+export interface UserAuditLogItem {
+  id: string;
+  mohDivision: string;
+  actorId: string;
+  actorName?: string;
+  targetUserId: string;
+  targetUserName?: string;
+  action: UserAuditAction;
+  changes: Record<string, any>;
+  createdAt: string;
+}
+

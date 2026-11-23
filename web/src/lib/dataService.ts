@@ -8,6 +8,8 @@ import {
   MOCK_TRANSFERS,
   MOCK_SMS_LOGS,
   CURRENT_USER,
+  MOCK_STAFF,
+  MOCK_AUDIT_LOGS,
 } from './mockData';
 import {
   PhmAreaSummary,
@@ -19,6 +21,8 @@ import {
   SmsLogItem,
   UserProfile,
   ReviewStatus,
+  StaffMember,
+  UserAuditLogItem,
 } from './types';
 
 // In-memory / localStorage storage for supervision notes created in Demo Mode
@@ -325,3 +329,106 @@ export async function getMotherTransfers(): Promise<MotherTransferItem[]> {
 export async function getSmsLogs(): Promise<SmsLogItem[]> {
   return MOCK_SMS_LOGS;
 }
+
+export async function getStaffMembers(): Promise<{ staff: StaffMember[]; auditLogs: UserAuditLogItem[] }> {
+  try {
+    const res = await fetch('/api/admin/users');
+    if (!res.ok) {
+      // In case api returns 401/403 or fallback
+      return { staff: [...MOCK_STAFF], auditLogs: [...MOCK_AUDIT_LOGS] };
+    }
+    const json = await res.json();
+    if (json.success && json.data) {
+      return { staff: json.data, auditLogs: json.auditLogs || [] };
+    }
+    return { staff: [...MOCK_STAFF], auditLogs: [...MOCK_AUDIT_LOGS] };
+  } catch (err) {
+    console.warn('Failed to fetch /api/admin/users, falling back to mock staff:', err);
+    return { staff: [...MOCK_STAFF], auditLogs: [...MOCK_AUDIT_LOGS] };
+  }
+}
+
+export async function createStaffMember(payload: {
+  fullName: string;
+  email: string;
+  phone: string;
+  employeeId: string;
+  role: 'PHM' | 'PHNS';
+  phmAreaId?: string | null;
+  preferredLang?: 'si' | 'ta' | 'en';
+  tempPassword?: string;
+  sendInvite?: boolean;
+}): Promise<{ success: boolean; message: string; data?: StaffMember }> {
+  try {
+    const res = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    return json;
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Network error occurred while creating staff.' };
+  }
+}
+
+export async function updateStaffMember(
+  id: string,
+  payload: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    employeeId?: string;
+    role?: 'PHM' | 'PHNS';
+    phmAreaId?: string | null;
+    preferredLang?: 'si' | 'ta' | 'en';
+  }
+): Promise<{ success: boolean; message: string; data?: StaffMember }> {
+  try {
+    const res = await fetch(`/api/admin/users/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    return json;
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Network error occurred while updating staff profile.' };
+  }
+}
+
+export async function toggleStaffStatus(
+  id: string,
+  isActive: boolean,
+  reason?: string
+): Promise<{ success: boolean; message: string; data?: StaffMember }> {
+  try {
+    const res = await fetch(`/api/admin/users/${id}/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive, reason }),
+    });
+    const json = await res.json();
+    return json;
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Network error occurred while toggling staff status.' };
+  }
+}
+
+export async function resetStaffPassword(
+  id: string,
+  options: { tempPassword?: string; sendEmail?: boolean }
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const res = await fetch(`/api/admin/users/${id}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options),
+    });
+    const json = await res.json();
+    return json;
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Network error occurred while resetting password.' };
+  }
+}
+
