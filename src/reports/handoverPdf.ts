@@ -32,8 +32,8 @@ export function renderHandoverHtml(params: HandoverPdfParams): string {
     destinationArea = 'Not Specified',
     expectedReturnDate,
     transferNote,
-    phmAreaName = 'Kottawa North (PHM/MAH/01)',
-    mohDivision = 'Maharagama MOH Division',
+    phmAreaName = 'Walasmulla Town (PHM/WAL/01)',
+    mohDivision = 'Walasmulla MOH Division',
   } = params;
 
   const riskColor =

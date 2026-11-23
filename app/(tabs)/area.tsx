@@ -160,8 +160,8 @@ export default function AreaScreen() {
       await exportAndShareH509({
         year: selectedYear,
         month: selectedMonth,
-        phmAreaName: 'Kottawa North (PHM/MAH/01)',
-        mohDivision: 'Maharagama',
+        phmAreaName: 'Walasmulla Town (PHM/WAL/01)',
+        mohDivision: 'Walasmulla',
       });
     } catch (err: any) {
       Alert.alert('Export Failed', err?.message || 'Could not generate PDF');
@@ -478,9 +478,9 @@ export default function AreaScreen() {
           mmr1CoveragePct: 92,
           mmr2CoveragePct: Math.round(stats?.vaccineCompletionPercent ?? 88),
           gnNutritionBreakdown: [
-            { gnDivision: 'Kottawa North', normalCount: Math.max(0, (stats?.totalChildren ?? 5) - (stats?.mamCount ?? 1) - (stats?.samCount ?? 0) - 2), mamCount: stats?.mamCount ?? 1, samCount: stats?.samCount ?? 0 },
-            { gnDivision: 'Kottawa South', normalCount: 2, mamCount: 0, samCount: 0 },
-            { gnDivision: 'Maharagama East', normalCount: 1, mamCount: 0, samCount: 0 },
+            { gnDivision: 'Walasmulla Town', normalCount: Math.max(0, (stats?.totalChildren ?? 5) - (stats?.mamCount ?? 1) - (stats?.samCount ?? 0) - 2), mamCount: stats?.mamCount ?? 1, samCount: stats?.samCount ?? 0 },
+            { gnDivision: 'Bowala', normalCount: 2, mamCount: 0, samCount: 0 },
+            { gnDivision: 'Omara', normalCount: 1, mamCount: 0, samCount: 0 },
           ],
         }}
       />

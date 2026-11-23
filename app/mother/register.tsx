@@ -30,7 +30,7 @@ const CHRONIC_OPTIONS: ChipOption[] = [
 ];
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const GN_DIVISIONS = ['Kottawa North', 'Kottawa South', 'Maharagama East', 'Maharagama West'];
+const GN_DIVISIONS = ['Walasmulla Town', 'Bowala', 'Omara', 'Medagangoda', 'Katuwana Road'];
 
 function toDmy(date: Date): string {
   const d = String(date.getDate()).padStart(2, '0');

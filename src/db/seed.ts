@@ -84,12 +84,12 @@ export async function seedDatabase(force: boolean = false, dbInstance?: SQLiteDa
   await db.execAsync(`
     INSERT INTO families (id, eligible_family_no, gn_division, address, husband_name, emergency_phone, residency_status, created_at, updated_at)
     VALUES 
-      ('${SEED_IDS.F1}', 'EF/KOT/001', 'Kottawa North', '42, Temple Road, Kottawa', 'Ruwan Perera', '0771234561', 'ACTIVE', '${now}', '${now}'),
-      ('${SEED_IDS.F2}', 'EF/KOT/002', 'Kottawa South', '15, Galle Road, Kottawa', 'Kasun Silva', '0772345672', 'ACTIVE', '${now}', '${now}'),
-      ('${SEED_IDS.F3}', 'EF/KOT/003', 'Kottawa North', '88, Lake View, Kottawa', 'Nuwan Fernando', '0773456783', 'ACTIVE', '${now}', '${now}'),
-      ('${SEED_IDS.F4}', 'EF/MAH/001', 'Maharagama East', '23, Station Road, Maharagama', 'Dinesh Jayawardena', '0774567894', 'ACTIVE', '${now}', '${now}'),
-      ('${SEED_IDS.F5}', 'EF/MAH/002', 'Maharagama West', '7, Hospital Lane, Maharagama', 'Pradeep Bandara', '0775678905', 'ACTIVE', '${now}', '${now}'),
-      ('${SEED_IDS.F6}', 'EF/KOT/004', 'Kottawa South', '55, New Road, Kottawa', 'Chaminda Rathnayake', '0776789016', 'ACTIVE', '${now}', '${now}');
+      ('${SEED_IDS.F1}', 'EF/WAL/001', 'Walasmulla Town', '42, Main Street, Walasmulla', 'Ruwan Perera', '0771234561', 'ACTIVE', '${now}', '${now}'),
+      ('${SEED_IDS.F2}', 'EF/WAL/002', 'Bowala', '15, Bowala Road, Walasmulla', 'Kasun Silva', '0772345672', 'ACTIVE', '${now}', '${now}'),
+      ('${SEED_IDS.F3}', 'EF/WAL/003', 'Walasmulla North', '88, Hospital Road, Walasmulla', 'Nuwan Fernando', '0773456783', 'ACTIVE', '${now}', '${now}'),
+      ('${SEED_IDS.F4}', 'EF/WAL/004', 'Omara', '23, Station Road, Walasmulla', 'Dinesh Jayawardena', '0774567894', 'ACTIVE', '${now}', '${now}'),
+      ('${SEED_IDS.F5}', 'EF/WAL/005', 'Medagangoda', '7, Katuwana Road, Walasmulla', 'Pradeep Bandara', '0775678905', 'ACTIVE', '${now}', '${now}'),
+      ('${SEED_IDS.F6}', 'EF/WAL/006', 'Bowala South', '55, Beliatta Road, Walasmulla', 'Chaminda Rathnayake', '0776789016', 'ACTIVE', '${now}', '${now}');
   `);
 
   // 2. Mothers
@@ -297,7 +297,7 @@ export async function seedDatabase(force: boolean = false, dbInstance?: SQLiteDa
       ('ea000002-0000-0000-0000-000000000002', 'MOTHER', '${SEED_IDS.M5}', 'VOG_REFERRAL', 'URGENT', '${daysAgo(3)}', 'OVERDUE', 'High-risk mother (Diabetes + Cardiac). Confirm VOG hospital review.', '${now}', '${now}'),
       ('ea000003-0000-0000-0000-000000000003', 'MOTHER', '${SEED_IDS.M5}', 'HOME_VISIT', 'HIGH', '${daysAgo(7)}', 'OVERDUE', 'Overdue antenatal home visit. Check blood sugar records.', '${now}', '${now}'),
       ('ea000004-0000-0000-0000-000000000004', 'MOTHER', '${SEED_IDS.M1}', 'HOME_VISIT', 'HIGH', '${daysFromNow(0)}', 'OPEN', 'Scheduled home visit: Fertility-treatment precious pregnancy follow-up.', '${now}', '${now}'),
-      ('ea000005-0000-0000-0000-000000000005', 'MOTHER', '${SEED_IDS.M4}', 'CLINIC_DUE', 'NORMAL', '${daysFromNow(1)}', 'OPEN', 'Routine clinic visit at Kottawa MOH clinic.', '${now}', '${now}'),
+      ('ea000005-0000-0000-0000-000000000005', 'MOTHER', '${SEED_IDS.M4}', 'CLINIC_DUE', 'NORMAL', '${daysFromNow(1)}', 'OPEN', 'Routine clinic visit at Walasmulla Base Hospital / MOH clinic.', '${now}', '${now}'),
       ('ea000006-0000-0000-0000-000000000006', 'CHILD', '${SEED_IDS.C1}', 'VACCINE_DUE', 'HIGH', '${daysFromNow(0)}', 'OPEN', 'Due for Pentavalent 1, OPV 1, fIPV 1 at clinic today.', '${now}', '${now}'),
       ('ea000007-0000-0000-0000-000000000007', 'CHILD', '${SEED_IDS.C3}', 'HOME_VISIT', 'URGENT', '${daysAgo(5)}', 'OVERDUE', 'Growth faltering alert: Weight dropping (MAM). Check Thriposha intake.', '${now}', '${now}'),
       ('ea000008-0000-0000-0000-000000000008', 'CHILD', '${SEED_IDS.C4}', 'VACCINE_DUE', 'HIGH', '${daysAgo(10)}', 'OVERDUE', 'MMR 2 vaccine overdue at 3 years.', '${now}', '${now}');
@@ -321,12 +321,12 @@ export async function seedScheduleTemplatesIfEmpty(dbInstance?: SQLiteDatabase):
   await db.execAsync(`
     INSERT INTO schedule_templates (id, day_of_week, week_pattern, activity_type, gn_division, title, start_time, end_time, created_at, updated_at)
     VALUES
-      ('da000001-0000-0000-0000-000000000001', 1, '1_3', 'ANC_CLINIC', NULL, 'Antenatal Care Clinic (පූර්ව ප්‍රසව සායනය)', '08:30', '13:00', '${now}', '${now}'),
-      ('da000002-0000-0000-0000-000000000002', 1, '2_4', 'HOME_VISIT', 'Kottawa North', 'Home Visits: Kottawa North (ගෘහ චාරිකා)', '08:30', '16:00', '${now}', '${now}'),
-      ('da000003-0000-0000-0000-000000000003', 2, 'ALL', 'HOME_VISIT', 'Kottawa South', 'Home Visits: Kottawa South (ගෘහ චාරිකා)', '08:30', '16:00', '${now}', '${now}'),
+      ('da000001-0000-0000-0000-000000000001', 1, '1_3', 'ANC_CLINIC', NULL, 'Antenatal Care Clinic (පූර්ව ප්‍රසව සායනය - වලස්මුල්ල මූලික රෝහල)', '08:30', '13:00', '${now}', '${now}'),
+      ('da000002-0000-0000-0000-000000000002', 1, '2_4', 'HOME_VISIT', 'Walasmulla Town', 'Home Visits: Walasmulla Town (ගෘහ චාරිකා)', '08:30', '16:00', '${now}', '${now}'),
+      ('da000003-0000-0000-0000-000000000003', 2, 'ALL', 'HOME_VISIT', 'Bowala', 'Home Visits: Bowala (ගෘහ චාරිකා)', '08:30', '16:00', '${now}', '${now}'),
       ('da000004-0000-0000-0000-000000000004', 3, 'ALL', 'CWC_CLINIC', NULL, 'Child Welfare & Immunization Clinic (ළමා සායනය)', '08:30', '13:30', '${now}', '${now}'),
-      ('da000005-0000-0000-0000-000000000005', 4, 'ALL', 'HOME_VISIT', 'Maharagama East', 'Home Visits: Maharagama East (ගෘහ චාරිකා)', '08:30', '16:00', '${now}', '${now}'),
-      ('da000006-0000-0000-0000-000000000006', 5, 'ALL', 'MOH_OFFICE', NULL, 'MOH Office Conference & H509 Review (කාර්යාල දිනය)', '08:30', '16:00', '${now}', '${now}'),
+      ('da000005-0000-0000-0000-000000000005', 4, 'ALL', 'HOME_VISIT', 'Omara', 'Home Visits: Omara (ගෘහ චාරිකා)', '08:30', '16:00', '${now}', '${now}'),
+      ('da000006-0000-0000-0000-000000000006', 5, 'ALL', 'MOH_OFFICE', NULL, 'Walasmulla MOH Office Conference & H509 Review (කාර්යාල දිනය)', '08:30', '16:00', '${now}', '${now}'),
       ('da000007-0000-0000-0000-000000000007', 6, 'ALL', 'CATCH_UP', NULL, 'Overdue Follow-ups & Catch-Up Field Visits (මගහැරුණු චාරිකා)', '08:30', '12:30', '${now}', '${now}'),
       ('da000008-0000-0000-0000-000000000008', 0, 'ALL', 'OFF', NULL, 'Weekly Rest Day (විවේක දිනය)', '08:30', '16:00', '${now}', '${now}');
   `);

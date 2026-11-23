@@ -66,7 +66,7 @@ export default function DivisionOverviewPage() {
 
   // Chart 1 Data: Maternal Risk Stacked
   const maternalRiskData = areas.map((a) => ({
-    name: a.name.replace('Maharagama ', 'Mah. ').replace('Kottawa ', 'Kot. '),
+    name: a.name.replace('Walasmulla ', 'Wal. '),
     Green: a.greenRiskCount,
     Yellow: a.yellowRiskCount,
     Red: a.redRiskCount,
@@ -77,7 +77,7 @@ export default function DivisionOverviewPage() {
     const weighingPct = Math.min(100, Math.round(((a.activeChildren - a.growthFalteringCount) / (a.activeChildren || 1)) * 96));
     const vaccinePct = Math.min(100, Math.round(((a.activeChildren - a.overdueVaccinesCount * 3) / (a.activeChildren || 1)) * 98));
     return {
-      name: a.name.replace('Maharagama ', 'Mah. ').replace('Kottawa ', 'Kot. '),
+      name: a.name.replace('Walasmulla ', 'Wal. '),
       Weighing: weighingPct,
       Vaccine: vaccinePct,
     };
@@ -89,10 +89,10 @@ export default function DivisionOverviewPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-            Maharagama MOH Division • Executive Overview
+            Walasmulla MOH Division • Executive Overview
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Real-time maternal, child nutrition, and EPI immunization supervision across 5 PHM areas
+            Real-time maternal, child nutrition, and EPI immunization supervision across Walasmulla Base Hospital catchment areas
           </p>
         </div>
 

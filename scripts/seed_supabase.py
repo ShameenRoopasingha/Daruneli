@@ -58,12 +58,12 @@ def seed():
     cur.execute("""
         INSERT INTO families (id, phm_area_id, eligible_family_no, gn_division, address, husband_name, emergency_phone, residency_status)
         VALUES 
-            (%(F1)s, %(area)s, 'EF/KOT/001', 'Kottawa North', '42, Temple Road, Kottawa', 'Ruwan Perera', '0771234561', 'ACTIVE'),
-            (%(F2)s, %(area)s, 'EF/KOT/002', 'Kottawa South', '15, Galle Road, Kottawa', 'Kasun Silva', '0772345672', 'ACTIVE'),
-            (%(F3)s, %(area)s, 'EF/KOT/003', 'Kottawa North', '88, Lake View, Kottawa', 'Nuwan Fernando', '0773456783', 'ACTIVE'),
-            (%(F4)s, %(area)s, 'EF/MAH/001', 'Maharagama East', '23, Station Road, Maharagama', 'Dinesh Jayawardena', '0774567894', 'ACTIVE'),
-            (%(F5)s, %(area)s, 'EF/MAH/002', 'Maharagama West', '7, Hospital Lane, Maharagama', 'Pradeep Bandara', '0775678905', 'ACTIVE'),
-            (%(F6)s, %(area)s, 'EF/KOT/004', 'Kottawa South', '55, New Road, Kottawa', 'Chaminda Rathnayake', '0776789016', 'ACTIVE')
+            (%(F1)s, %(area)s, 'EF/WAL/001', 'Walasmulla Town', '42, Main Street, Walasmulla', 'Ruwan Perera', '0771234561', 'ACTIVE'),
+            (%(F2)s, %(area)s, 'EF/WAL/002', 'Bowala', '15, Bowala Road, Walasmulla', 'Kasun Silva', '0772345672', 'ACTIVE'),
+            (%(F3)s, %(area)s, 'EF/WAL/003', 'Walasmulla North', '88, Hospital Road, Walasmulla', 'Nuwan Fernando', '0773456783', 'ACTIVE'),
+            (%(F4)s, %(area)s, 'EF/WAL/004', 'Omara', '23, Station Road, Walasmulla', 'Dinesh Jayawardena', '0774567894', 'ACTIVE'),
+            (%(F5)s, %(area)s, 'EF/WAL/005', 'Medagangoda', '7, Katuwana Road, Walasmulla', 'Pradeep Bandara', '0775678905', 'ACTIVE'),
+            (%(F6)s, %(area)s, 'EF/WAL/006', 'Bowala South', '55, Beliatta Road, Walasmulla', 'Chaminda Rathnayake', '0776789016', 'ACTIVE')
         ON CONFLICT (id) DO UPDATE SET
             phm_area_id = EXCLUDED.phm_area_id,
             eligible_family_no = EXCLUDED.eligible_family_no,

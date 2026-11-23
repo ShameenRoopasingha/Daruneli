@@ -26,7 +26,7 @@ A dedicated Next.js (App Router + Tailwind CSS + Recharts + Supabase) clinical s
    - PHM areas and Grama Niladhari (GN) coverage mapping.
    - Add Area modal (for MOH role) and "Invite / Assign New PHM" workflow with backend Route Handler.
 6. **Offline Demo Mode:**
-   - Automatically activates if Supabase credentials are not provided in `web/.env.local`, pre-loaded with realistic Maharagama MOH division clinical records.
+   - Automatically activates if Supabase credentials are not provided in `web/.env.local`, pre-loaded with realistic Walasmulla MOH division clinical records.
 
 ---
 

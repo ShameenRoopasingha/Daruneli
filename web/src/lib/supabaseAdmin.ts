@@ -43,10 +43,10 @@ export async function requireSupervisorSession(): Promise<CallerContext> {
     // When Supabase credentials are missing, running in demo mode
     return {
       userId: 'usr_moh_001',
-      email: 'moh.maharagama@health.gov.lk',
+      email: 'moh.walasmulla@health.gov.lk',
       fullName: 'Dr. Anuradha Jayawardena',
       role: 'MOH',
-      mohDivision: 'Maharagama MOH Division',
+      mohDivision: 'Walasmulla MOH Division',
     };
   }
 
@@ -96,7 +96,7 @@ export async function requireSupervisorSession(): Promise<CallerContext> {
   }
 
   const areaInfo = (profile as any).phm_areas;
-  const division = profile.moh_division || areaInfo?.moh_division || 'Maharagama MOH Division';
+  const division = profile.moh_division || areaInfo?.moh_division || 'Walasmulla MOH Division';
 
   return {
     userId: user.id,

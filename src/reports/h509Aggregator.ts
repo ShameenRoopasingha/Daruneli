@@ -342,8 +342,8 @@ export async function aggregateH509Data(params: H509ReportParams): Promise<H509R
       month,
       monthName,
       reportingPeriod: `${monthName} ${year} (${formatDate(startDate)} to ${formatDate(endDate)})`,
-      phmAreaName: params.phmAreaName || 'Kottawa North (PHM/MAH/01)',
-      mohDivision: params.mohDivision || 'Maharagama',
+      phmAreaName: params.phmAreaName || 'Walasmulla Town (PHM/WAL/01)',
+      mohDivision: params.mohDivision || 'Walasmulla',
       generatedAt: formatDateTime(new Date()),
     },
     section1_antenatal: {

@@ -66,7 +66,7 @@ export default function AreasDirectoryPage() {
       id: `area_custom_${Date.now()}`,
       code: areaCode.trim(),
       name: areaName.trim(),
-      mohDivision: 'Maharagama MOH Division',
+      mohDivision: 'Walasmulla MOH Division',
       gnDivisions: gns.length > 0 ? gns : ['General Division'],
       phmOfficerName: 'Vacant (Unassigned)',
       phmOfficerPhone: '-',
@@ -305,7 +305,7 @@ export default function AreasDirectoryPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Maharagama Central"
+                  placeholder="e.g. Walasmulla Town"
                   value={areaName}
                   onChange={(e) => setAreaName(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"
@@ -318,7 +318,7 @@ export default function AreasDirectoryPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Maharagama North, Pamunuwa"
+                  placeholder="e.g. Walasmulla Town, Bowala"
                   value={gnDivisionsInput}
                   onChange={(e) => setGnDivisionsInput(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm"

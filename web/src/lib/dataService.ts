@@ -74,7 +74,7 @@ export async function getCurrentUserProfile(): Promise<UserProfile> {
     id: profile.id,
     fullName: profile.full_name,
     role: profile.role as any,
-    mohDivision: areaInfo?.moh_division || 'Maharagama MOH Division',
+    mohDivision: areaInfo?.moh_division || 'Walasmulla MOH Division',
     phmAreaId: null,
     phmAreaName: areaInfo?.phm_area_name || null,
   };
@@ -179,7 +179,7 @@ export async function submitSupervisionDirective(
 ): Promise<boolean> {
   const noteObj = {
     id: `sn_local_${Date.now()}`,
-    mohDivision: 'Maharagama MOH Division',
+    mohDivision: 'Walasmulla MOH Division',
     phmAreaId: 'area_kot_north',
     targetType: 'MOTHER',
     targetId: alertId,
@@ -204,7 +204,7 @@ export async function submitSupervisionDirective(
 
   try {
     const { error } = await supabase.from('supervision_notes').insert({
-      moh_division: 'Maharagama MOH Division',
+      moh_division: 'Walasmulla MOH Division',
       phm_area_id: '00000000-0000-0000-0000-000000000000', // fallback or real area id
       target_type: 'MOTHER',
       target_id: alertId,

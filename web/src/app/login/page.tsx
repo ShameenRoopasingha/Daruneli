@@ -164,7 +164,7 @@ export default function LoginPage() {
           onClick={handleDemoLogin}
           className="w-full py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700/80 text-slate-800 dark:text-slate-200 font-bold text-sm border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 transition-all"
         >
-          <span>🚀 Enter Offline Demo Dashboard (Maharagama MOH)</span>
+          <span>🚀 Enter Offline Demo Dashboard (Walasmulla MOH)</span>
         </button>
 
         <div className="text-center mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-1 flex flex-col items-center">

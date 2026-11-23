@@ -374,7 +374,7 @@ export const MOTHER_TRANSLATIONS: Record<MotherLang, MotherPortalDictionary> = {
       pinHint: 'Remember this PIN for signing in securely in the future.',
       activateBtn: 'Activate & Enter Portal',
       loginBtn: 'Sign In with PIN',
-      demoBtn: '🚀 Try Demo Mother Portal (Maharagama MOH)',
+      demoBtn: '🚀 Try Demo Mother Portal (Walasmulla MOH)',
       identifierLabel: 'Phone Number or NIC',
       identifierPlaceholder: 'e.g. 0771234567 or 917654321V',
       haveInvite: 'Have an invite code from your midwife? Activate here',

@@ -52,7 +52,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-300/80 dark:border-amber-700/60 text-amber-900 dark:text-amber-200 text-xs font-bold shadow-sm">
             <WifiOff className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             <span className="hidden md:inline">Offline Demo Mode</span>
-            <span className="text-[10px] font-normal opacity-80">(Maharagama MOH)</span>
+            <span className="text-[10px] font-normal opacity-80">(Walasmulla MOH)</span>
           </div>
         )}
 

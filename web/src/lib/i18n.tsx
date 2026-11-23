@@ -15,7 +15,7 @@ export const DICTIONARY: Translations = {
   // Brand & Header
   'app.title': { en: 'Daruneli MOH Portal', si: 'දරුනැලි සෞඛ්‍ය වෛද්‍ය නිලධාරී පද්ධතිය' },
   'app.subtitle': { en: 'PHNS & MOH Midwifery Supervision Portal', si: 'මහජන සෞඛ්‍ය හෙද සොයුරිය සහ වෛද්‍ය නිලධාරී අධීක්ෂණ ද්වාරය' },
-  'app.demo_badge': { en: 'Offline Demo Mode (Maharagama MOH)', si: 'නොබැඳි ආදර්ශන ප්‍රකාරය (මහරගම MOH)' },
+  'app.demo_badge': { en: 'Offline Demo Mode (Walasmulla MOH)', si: 'නොබැඳි ආදර්ශන ප්‍රකාරය (වලස්මුල්ල MOH)' },
   'nav.overview': { en: 'Division Overview', si: 'ප්‍රාදේශීය දළ විශ්ලේෂණය' },
   'nav.escalations': { en: 'Escalation Radar', si: 'අධි අවදානම් හදිසි පෝලිම' },
   'nav.reports': { en: 'H509 Monthly Reports', si: 'H509 මාසික වාර්තා' },

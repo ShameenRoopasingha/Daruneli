@@ -86,14 +86,14 @@ export const DEMO_MOTHER_PORTAL_DATA: MotherPortalData = {
     phone: '0771234567',
     dob: '14/05/1991',
     bloodGroup: 'B+',
-    phmAreaName: 'Kottawa North',
-    mohDivision: 'Maharagama MOH Division',
+    phmAreaName: 'Walasmulla Town',
+    mohDivision: 'Walasmulla MOH Division',
   },
   phmContact: {
     name: 'Mrs. Sunethra Perera',
     phone: '0714567890',
-    areaName: 'Kottawa North (Area 14)',
-    mohDivision: 'Maharagama MOH Division',
+    areaName: 'Walasmulla Town (Area 01)',
+    mohDivision: 'Walasmulla MOH Division',
   },
   pregnancy: {
     id: 'preg_demo_001',
