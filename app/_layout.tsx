@@ -1,16 +1,17 @@
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import React, { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, AppState, AppStateStatus, useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTranslation } from 'react-i18next';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/components/useColorScheme';
 import '@/src/i18n'; // Initialize i18n
 import { getDatabase } from '@/src/db/database';
 import { seedDatabase } from '@/src/db/seed';
 import { COLORS, RADIUS, SHADOWS } from '@/src/theme/tokens';
+import { isLockEnabled, hasPinSet, shouldLockApp } from '@/src/security/authLock';
+import { AppLockScreen } from '@/src/components/AppLockScreen';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -20,6 +21,35 @@ export default function RootLayout() {
   const { t } = useTranslation();
   const [dbReady, setDbReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const lastBackgroundRef = useRef<number>(0);
+
+  useEffect(() => {
+    // Check initial lock state on startup
+    async function checkInitialLock() {
+      const enabled = await isLockEnabled();
+      const hasPin = await hasPinSet();
+      if (enabled && hasPin) {
+        setIsLocked(true);
+      }
+    }
+    void checkInitialLock();
+
+    const subscription = AppState.addEventListener('change', async (nextState: AppStateStatus) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        lastBackgroundRef.current = Date.now();
+      } else if (nextState === 'active') {
+        const needsLock = await shouldLockApp(lastBackgroundRef.current);
+        if (needsLock) {
+          setIsLocked(true);
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -148,6 +178,7 @@ export default function RootLayout() {
           }}
         />
       </Stack>
+      {isLocked && <AppLockScreen onUnlocked={() => setIsLocked(false)} />}
     </ThemeProvider>
   );
 }

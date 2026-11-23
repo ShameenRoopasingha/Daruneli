@@ -7,6 +7,7 @@ let isMigrating = false;
 const SYNCED_TABLES = [
   'families',
   'mothers',
+  'mother_transfers',
   'pregnancies',
   'antenatal_visits',
   'children',
@@ -41,6 +42,25 @@ export async function ensurePhase2Columns(database: SQLite.SQLiteDatabase): Prom
           );
         }
 
+        // Phase 3A column additions for pre-existing tables
+        if (table === 'families') {
+          if (!colNames.has('gps_lat')) {
+            await database.execAsync('ALTER TABLE families ADD COLUMN gps_lat REAL;');
+          }
+          if (!colNames.has('gps_lng')) {
+            await database.execAsync('ALTER TABLE families ADD COLUMN gps_lng REAL;');
+          }
+          if (!colNames.has('temp_out_return_date')) {
+            await database.execAsync('ALTER TABLE families ADD COLUMN temp_out_return_date TEXT;');
+          }
+          if (!colNames.has('transfer_note')) {
+            await database.execAsync('ALTER TABLE families ADD COLUMN transfer_note TEXT;');
+          }
+          if (!colNames.has('transferred_to_phm_area')) {
+            await database.execAsync('ALTER TABLE families ADD COLUMN transferred_to_phm_area TEXT;');
+          }
+        }
+
         // Clinical charts column additions for pre-existing tables
         if (table === 'pregnancies') {
           if (!colNames.has('booking_weight_kg')) {
@@ -59,6 +79,15 @@ export async function ensurePhase2Columns(database: SQLite.SQLiteDatabase): Prom
         if (table === 'antenatal_visits') {
           if (!colNames.has('sfh_cm')) {
             await database.execAsync('ALTER TABLE antenatal_visits ADD COLUMN sfh_cm REAL;');
+          }
+          if (!colNames.has('voice_note_local_uri')) {
+            await database.execAsync('ALTER TABLE antenatal_visits ADD COLUMN voice_note_local_uri TEXT;');
+          }
+          if (!colNames.has('voice_note_remote_url')) {
+            await database.execAsync('ALTER TABLE antenatal_visits ADD COLUMN voice_note_remote_url TEXT;');
+          }
+          if (!colNames.has('voice_note_duration_sec')) {
+            await database.execAsync('ALTER TABLE antenatal_visits ADD COLUMN voice_note_duration_sec INTEGER;');
           }
         }
         if (table === 'children') {
@@ -131,6 +160,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
 export async function resetDatabase(): Promise<void> {
   const database = await getDatabase();
   await database.execAsync(`
+    DELETE FROM mother_transfers;
     DELETE FROM postnatal_meows;
     DELETE FROM fetal_kick_logs;
     DELETE FROM schedule_overrides;

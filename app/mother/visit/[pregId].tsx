@@ -23,6 +23,7 @@ import {
 } from '@/src/db';
 import { TapChipSelector, type ChipOption } from '@/src/components/TapChipSelector';
 import { UrgentReferralModal } from '@/src/components/UrgentReferralModal';
+import { VoiceNoteRecorder } from '@/src/components/VoiceNoteRecorder';
 import { calculateRisk, type DangerSign } from '@/src/engine/riskEngine';
 import { calculatePOA } from '@/src/engine/pregnancyCalc';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
@@ -62,6 +63,8 @@ export default function AntenatalVisitScreen() {
   const [dangerSigns, setDangerSigns] = useState<string[]>([]);
   const [supplements, setSupplements] = useState<string[]>(['IRON', 'FOLIC_ACID', 'CALCIUM']);
   const [notes, setNotes] = useState('');
+  const [voiceNoteLocalUri, setVoiceNoteLocalUri] = useState<string | null>(null);
+  const [voiceNoteDurationSec, setVoiceNoteDurationSec] = useState<number | null>(null);
 
   // Referral Modal State
   const [showReferralModal, setShowReferralModal] = useState(false);
@@ -174,6 +177,8 @@ export default function AntenatalVisitScreen() {
         supplements: supplements,
         notes: notes.trim(),
         next_visit_date: nextDateStr,
+        voice_note_local_uri: voiceNoteLocalUri ?? undefined,
+        voice_note_duration_sec: voiceNoteDurationSec ?? undefined,
       });
 
       // 2. Update Pregnancy Risk Level & Score
@@ -420,6 +425,20 @@ export default function AntenatalVisitScreen() {
           onChangeText={setNotes}
           multiline
           numberOfLines={3}
+        />
+
+        {/* Offline Voice Note Recorder */}
+        <VoiceNoteRecorder
+          existingUri={voiceNoteLocalUri}
+          existingDurationSec={voiceNoteDurationSec}
+          onRecorded={(uri, duration) => {
+            setVoiceNoteLocalUri(uri);
+            setVoiceNoteDurationSec(duration);
+          }}
+          onDeleted={() => {
+            setVoiceNoteLocalUri(null);
+            setVoiceNoteDurationSec(null);
+          }}
         />
       </View>
 

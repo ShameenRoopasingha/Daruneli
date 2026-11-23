@@ -3,15 +3,14 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   StyleSheet,
   Linking,
   Alert,
   RefreshControl,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { COLORS, SHADOWS } from '@/src/theme';
+import { COLORS } from '@/src/theme';
 import {
   getScheduleTemplates,
   getOverridesForRange,
@@ -26,7 +25,6 @@ import {
 } from '@/src/db/repositories/scheduleRepo';
 import {
   resolveDayPlan,
-  getDayDotIndicators,
   computeAutoBalancePlan,
   type ScheduleTemplate,
   type ScheduleOverride,
@@ -38,6 +36,11 @@ import {
   AutoBalanceModal,
   ManualRescheduleModal,
 } from '@/src/components';
+import {
+  WeekDayStrip,
+  DayPlanBanner,
+  ScheduleActionCard,
+} from '@/src/components/schedule';
 
 function formatDateKey(d: Date): string {
   const year = d.getFullYear();
@@ -58,18 +61,7 @@ function getMondayOfWeek(d: Date): Date {
   return new Date(date.setDate(diff));
 }
 
-const SHORT_WEEKDAYS = [
-  { dayIndex: 1, en: 'Mon', si: 'සඳු' },
-  { dayIndex: 2, en: 'Tue', si: 'අඟ' },
-  { dayIndex: 3, en: 'Wed', si: 'බදා' },
-  { dayIndex: 4, en: 'Thu', si: 'බ්‍රහ' },
-  { dayIndex: 5, en: 'Fri', si: 'සිකු' },
-  { dayIndex: 6, en: 'Sat', si: 'සෙන' },
-  { dayIndex: 0, en: 'Sun', si: 'ඉරි' },
-];
-
 export default function ScheduleScreen() {
-  const router = useRouter();
   const { i18n } = useTranslation();
   const isSi = i18n.language === 'si';
 
@@ -91,7 +83,7 @@ export default function ScheduleScreen() {
   const [rescheduleModalVisible, setRescheduleModalVisible] = useState<boolean>(false);
   const [rescheduleTargetItem, setRescheduleTargetItem] = useState<AutoPopulatedItem | null>(null);
 
-  // Generate 7 days for the current week strip
+  // Generate 7 days for current week strip
   const weekDays = useMemo(() => {
     const days: { dateKey: string; dayIndex: number; dayNum: number; isToday: boolean }[] = [];
     for (let i = 0; i < 7; i++) {
@@ -119,45 +111,46 @@ export default function ScheduleScreen() {
         const tmpls = currentTemplates || (await getScheduleTemplates());
         let ovrs = currentOverrides;
         if (!ovrs) {
-          const start = weekDays[0]?.dateKey || targetDate;
-          const end = weekDays[6]?.dateKey || targetDate;
-          ovrs = await getOverridesForRange(start, end);
+          const startKey = formatDateKey(weekMonday);
+          const endD = new Date(weekMonday);
+          endD.setDate(endD.getDate() + 6);
+          const endKey = formatDateKey(endD);
+          ovrs = await getOverridesForRange(startKey, endKey);
         }
 
-        const resolved = resolveDayPlan(targetDate, tmpls, ovrs);
-        const dayItems = await getAutoPopulatedItemsForDay(targetDate, resolved);
+        const plan = resolveDayPlan(targetDate, tmpls, ovrs);
+        const dayItems = await getAutoPopulatedItemsForDay(targetDate, plan);
         setItems(dayItems);
       } catch (err) {
-        console.error('Error loading day items:', err);
+        console.error('Error loading items for date:', err);
       }
     },
-    [weekDays]
+    [weekMonday]
   );
 
   const loadData = useCallback(async () => {
     try {
-      const [allTemplates, gns, cap] = await Promise.all([
+      const [tmpls, gns, cap] = await Promise.all([
         getScheduleTemplates(),
         getDistinctGnDivisions(),
         getDailyHomeVisitCap(),
       ]);
-      setTemplates(allTemplates);
-      setGnDivisions(gns.length > 0 ? gns : ['Kottawa North', 'Kottawa South', 'Maharagama East', 'Maharagama West']);
+      setTemplates(tmpls);
+      setGnDivisions(gns);
       setDailyCap(cap);
 
-      let weekOverrides: ScheduleOverride[] = [];
-      if (weekDays.length > 0) {
-        const start = weekDays[0].dateKey;
-        const end = weekDays[6].dateKey;
-        weekOverrides = await getOverridesForRange(start, end);
-        setOverrides(weekOverrides);
-      }
+      const startKey = formatDateKey(weekMonday);
+      const endD = new Date(weekMonday);
+      endD.setDate(endD.getDate() + 6);
+      const endKey = formatDateKey(endD);
+      const ovrs = await getOverridesForRange(startKey, endKey);
+      setOverrides(ovrs);
 
-      await loadDataForDate(selectedDate, allTemplates, weekOverrides);
+      await loadDataForDate(selectedDate, tmpls, ovrs);
     } catch (err) {
-      console.error('Error loading schedule templates/overrides:', err);
+      console.error('Error loading schedule:', err);
     }
-  }, [weekDays, selectedDate, loadDataForDate]);
+  }, [weekMonday, selectedDate, loadDataForDate]);
 
   useFocusEffect(
     useCallback(() => {
@@ -165,38 +158,37 @@ export default function ScheduleScreen() {
     }, [loadData])
   );
 
-  const handleSelectDate = async (dateKey: string) => {
-    setSelectedDate(dateKey);
-    await loadDataForDate(dateKey, templates, overrides);
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
     await loadData();
     setRefreshing(false);
   };
 
+  const handleSelectDate = (dateKey: string) => {
+    setSelectedDate(dateKey);
+    loadDataForDate(dateKey, templates, overrides);
+  };
+
   const handlePrevWeek = () => {
     const prev = new Date(weekMonday);
     prev.setDate(prev.getDate() - 7);
     setWeekMonday(prev);
-    const newSelected = formatDateKey(prev);
-    setSelectedDate(newSelected);
-    loadDataForDate(newSelected, templates, overrides);
+    const target = formatDateKey(prev);
+    setSelectedDate(target);
+    loadDataForDate(target);
   };
 
   const handleNextWeek = () => {
     const next = new Date(weekMonday);
     next.setDate(next.getDate() + 7);
     setWeekMonday(next);
-    const newSelected = formatDateKey(next);
-    setSelectedDate(newSelected);
-    loadDataForDate(newSelected, templates, overrides);
+    const target = formatDateKey(next);
+    setSelectedDate(target);
+    loadDataForDate(target);
   };
 
   const handleJumpToday = () => {
-    const newMonday = getMondayOfWeek(new Date());
-    setWeekMonday(newMonday);
+    setWeekMonday(getMondayOfWeek(new Date()));
     setSelectedDate(todayStr);
     loadDataForDate(todayStr, templates, overrides);
   };
@@ -259,7 +251,6 @@ export default function ScheduleScreen() {
     }
   };
 
-  // Reschedule a task to +7 days with confirmation
   const handleReschedule = (taskId: string, targetName: string) => {
     Alert.alert(
       isSi ? 'කාර්යය කල් දැමීම තහවුරු කරන්න' : 'Confirm Postponing Visit',
@@ -290,7 +281,6 @@ export default function ScheduleScreen() {
     );
   };
 
-  // Revert override to master timetable with confirmation
   const handleRevertOverride = () => {
     Alert.alert(
       isSi ? 'මුල් සැලසුමට යළි සකසන්නද?' : 'Revert to Master Timetable?',
@@ -325,7 +315,6 @@ export default function ScheduleScreen() {
     });
   };
 
-  // Group items into priority/overdue and regular scheduled
   const priorityItems = useMemo(
     () => items.filter((i) => i.isOverdue || i.badgeColor === 'red' || i.riskLevel === 'RED'),
     [items]
@@ -337,214 +326,45 @@ export default function ScheduleScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 1. Header & Week Navigation */}
-      <View style={styles.topControlCard}>
-        <View style={styles.headerTopRow}>
-          <View style={styles.titleWithIcon}>
-            <Text style={styles.calendarIcon}>📅</Text>
-            <View>
-              <Text style={styles.headerTitle}>
-                {isSi ? 'සතිපතා කාලසටහන' : 'Advance Programme'}
-              </Text>
-              <Text style={styles.headerSubtitle}>
-                {isSi ? 'ක්ෂේත්‍ර සහ සායන සැලසුම' : 'Weekly Field & Clinic Schedule'}
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.setupBtn}
-            onPress={() => setTemplateModalVisible(true)}
-          >
-            <Text style={styles.setupBtnText}>⚙️ {isSi ? 'සැලසුම' : 'Setup'}</Text>
-          </TouchableOpacity>
-        </View>
+      {/* 1. Header & Week Navigation Strip */}
+      <WeekDayStrip
+        isSi={isSi}
+        selectedDate={selectedDate}
+        todayStr={todayStr}
+        weekDays={weekDays}
+        weekRangeText={weekRangeText}
+        templates={templates}
+        overrides={overrides}
+        items={items}
+        onSelectDate={handleSelectDate}
+        onPrevWeek={handlePrevWeek}
+        onNextWeek={handleNextWeek}
+        onJumpToday={handleJumpToday}
+        onOpenSetup={() => setTemplateModalVisible(true)}
+      />
 
-        {/* Week Range Strip & Nav Arrows */}
-        <View style={styles.navRow}>
-          <TouchableOpacity style={styles.arrowBtn} onPress={handlePrevWeek}>
-            <Text style={styles.arrowText}>‹</Text>
-          </TouchableOpacity>
-
-          <View style={styles.weekCenterBox}>
-            <Text style={styles.weekRangeText}>{weekRangeText}</Text>
-            {selectedDate !== todayStr && (
-              <TouchableOpacity style={styles.todayChip} onPress={handleJumpToday}>
-                <Text style={styles.todayChipText}>{isSi ? 'අද දිනය' : 'Today'}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <TouchableOpacity style={styles.arrowBtn} onPress={handleNextWeek}>
-            <Text style={styles.arrowText}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 7-Day Horizontal Strip */}
-        <View style={styles.daysStrip}>
-          {weekDays.map((d) => {
-            const isSelected = selectedDate === d.dateKey;
-            const shortWd = SHORT_WEEKDAYS.find((w) => w.dayIndex === d.dayIndex);
-            const planForDay = resolveDayPlan(d.dateKey, templates, overrides);
-            const indicators = getDayDotIndicators(d.dateKey, planForDay, items);
-
-            let dotColor = '#94A3B8'; // gray / off
-            if (indicators.hasUrgentRed) dotColor = '#EF4444'; // red
-            else if (indicators.isClinic) dotColor = '#0284C7'; // blue
-            else if (indicators.isHomeVisit) dotColor = '#10B981'; // green
-
-            return (
-              <TouchableOpacity
-                key={d.dateKey}
-                style={[
-                  styles.dayPill,
-                  isSelected && styles.dayPillSelected,
-                  d.isToday && !isSelected && styles.dayPillToday,
-                ]}
-                onPress={() => handleSelectDate(d.dateKey)}
-              >
-                <Text
-                  style={[styles.dayShortName, isSelected && styles.dayShortNameSelected]}
-                  numberOfLines={1}
-                >
-                  {isSi ? shortWd?.si : shortWd?.en}
-                </Text>
-                <Text style={[styles.dayNumber, isSelected && styles.dayNumberSelected]}>
-                  {d.dayNum}
-                </Text>
-                <View style={[styles.statusDot, { backgroundColor: dotColor }]} />
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Main Content ScrollView */}
+      {/* 2. Main Scroll Content */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
       >
-        {/* 2. Selected Day Plan Banner */}
-        <View style={[styles.planBanner, resolvedPlan.is_override && styles.planBannerOverride]}>
-          <View style={styles.bannerHeaderRow}>
-            <View style={styles.bannerBadgeContainer}>
-              <View
-                style={[
-                  styles.activityBadge,
-                  resolvedPlan.activity_type === 'ANC_CLINIC' || resolvedPlan.activity_type === 'CWC_CLINIC'
-                    ? styles.badgeClinic
-                    : resolvedPlan.activity_type === 'HOME_VISIT'
-                    ? styles.badgeHome
-                    : resolvedPlan.activity_type === 'MOH_OFFICE'
-                    ? styles.badgeOffice
-                    : styles.badgeRest,
-                ]}
-              >
-                <Text style={styles.activityBadgeText}>
-                  {resolvedPlan.activity_type === 'ANC_CLINIC'
-                    ? '🤰 ' + (isSi ? 'පූර්ව ප්‍රසව සායනය' : 'ANC Clinic')
-                    : resolvedPlan.activity_type === 'CWC_CLINIC'
-                    ? '👶 ' + (isSi ? 'ළමා සායනය / එන්නත්' : 'CWC Clinic')
-                    : resolvedPlan.activity_type === 'HOME_VISIT'
-                    ? '🏡 ' + (isSi ? 'ගෘහ චාරිකා' : 'Home Visits')
-                    : resolvedPlan.activity_type === 'MOH_OFFICE'
-                    ? '🏢 ' + (isSi ? 'කාර්යාල දිනය' : 'MOH Office')
-                    : resolvedPlan.activity_type === 'CATCH_UP'
-                    ? '⚡ ' + (isSi ? 'මගහැරුණු චාරිකා' : 'Catch-Up')
-                    : '☕ ' + (isSi ? 'විවේක දිනය' : 'Rest / Off')}
-                </Text>
-              </View>
-
-              {resolvedPlan.is_override && (
-                <View style={styles.modifiedPill}>
-                  <Text style={styles.modifiedPillText}>
-                    ✏️ {isSi ? 'වෙනස් කළ දිනයකි' : 'Modified'}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={styles.overrideBtn}
-              onPress={() => setOverrideModalVisible(true)}
-            >
-              <Text style={styles.overrideBtnText}>
-                {isSi ? 'දිනය වෙනස් කරන්න' : 'Override Day'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.planTitle}>{resolvedPlan.title}</Text>
-
-          <View style={styles.planMetaRow}>
-            {resolvedPlan.gn_division && (
-              <View style={styles.metaChip}>
-                <Text style={styles.metaChipText}>📍 {resolvedPlan.gn_division}</Text>
-              </View>
-            )}
-            <View style={styles.metaChip}>
-              <Text style={styles.metaChipText}>
-                ⏰ {resolvedPlan.start_time} – {resolvedPlan.end_time}
-              </Text>
-            </View>
-          </View>
-
-          {resolvedPlan.notes && (
-            <View style={styles.notesBox}>
-              <Text style={styles.notesText}>📝 {resolvedPlan.notes}</Text>
-            </View>
-          )}
-
-          {resolvedPlan.is_override && (
-            <TouchableOpacity
-              style={styles.resetPlanLink}
-              onPress={handleRevertOverride}
-            >
-              <Text style={styles.resetPlanLinkText}>
-                ↺ {isSi ? 'මුල් සතිපතා සැලසුමට යළි සකසන්න' : 'Revert to Master Timetable'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* 2.5 OVERLOAD ALERT BANNER (ONLY for HOME_VISIT days exceeding cap) */}
-        {isOverloaded && (
-          <View style={styles.overloadBanner}>
-            <View style={styles.overloadBannerLeft}>
-              <Text style={styles.overloadAlertIcon}>⚠️</Text>
-              <View style={styles.overloadInfo}>
-                <View style={styles.overloadHeaderRow}>
-                  <Text style={styles.overloadTitle}>
-                    {isSi ? 'වැඩ බර අධික දිනයකි' : 'Day Overloaded'}
-                  </Text>
-                  <View style={styles.overloadCountPill}>
-                    <Text style={styles.overloadCountText}>
-                      {items.length} / {dailyCap} {isSi ? 'චාරිකා' : 'Visits'}
-                    </Text>
-                  </View>
-                </View>
-                <Text style={styles.overloadSub}>
-                  {isSi
-                    ? `දෛනික සීමාවට (${dailyCap}) වඩා චාරිකා ${items.length - dailyCap} ක් වැඩියි. අඩු අවදානම් චාරිකා සෙනසුරාදාට හෝ වෙනත් දිනවලට ස්වයංක්‍රීයව තුලනය කළ හැක.`
-                    : `Exceeds daily cap by ${items.length - dailyCap} visits. High-risk visits will remain locked.`}
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.autoBalanceBtn}
-              onPress={() => setAutoBalanceModalVisible(true)}
-            >
-              <Text style={styles.autoBalanceBtnText}>
-                ⚡ {isSi ? 'ස්වයංක්‍රීය තුලනය' : 'Auto-Balance'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* Day Plan & Overload Warning Banner */}
+        <DayPlanBanner
+          isSi={isSi}
+          resolvedPlan={resolvedPlan}
+          isOverloaded={isOverloaded}
+          itemsCount={items.length}
+          dailyCap={dailyCap}
+          onOpenOverrideModal={() => setOverrideModalVisible(true)}
+          onRevertOverride={handleRevertOverride}
+          onOpenAutoBalanceModal={() => setAutoBalanceModalVisible(true)}
+        />
 
         {/* 3. Action Items Section */}
         {resolvedPlan.activity_type === 'OFF' || resolvedPlan.activity_type === 'HOLIDAY' || resolvedPlan.activity_type === 'LEAVE' ? (
           <View style={styles.emptyDayContainer}>
-            <Text style={styles.emptyDayEmoji}>
-              {resolvedPlan.activity_type === 'HOLIDAY' ? '🌕' : resolvedPlan.activity_type === 'LEAVE' ? '🏖️' : '☕'}
+            <Text style={styles.emptyDayIcon}>
+              {resolvedPlan.activity_type === 'HOLIDAY' ? '🎉' : resolvedPlan.activity_type === 'LEAVE' ? '🏖️' : '☕'}
             </Text>
             <Text style={styles.emptyDayTitle}>
               {resolvedPlan.activity_type === 'HOLIDAY'
@@ -589,16 +409,16 @@ export default function ScheduleScreen() {
                       <Text style={styles.groupCount}>({priorityItems.length})</Text>
                     </View>
 
-                    {priorityItems.map((item) =>
-                      renderActionCard(
-                        item,
-                        router,
-                        isSi,
-                        handleCall,
-                        handleReschedule,
-                        handleOpenManualReschedule
-                      )
-                    )}
+                    {priorityItems.map((item) => (
+                      <ScheduleActionCard
+                        key={item.id}
+                        item={item}
+                        isSi={isSi}
+                        onCall={handleCall}
+                        onReschedule7d={handleReschedule}
+                        onOpenManualReschedule={handleOpenManualReschedule}
+                      />
+                    ))}
                   </View>
                 )}
 
@@ -612,16 +432,16 @@ export default function ScheduleScreen() {
                       <Text style={styles.groupCount}>({regularItems.length})</Text>
                     </View>
 
-                    {regularItems.map((item) =>
-                      renderActionCard(
-                        item,
-                        router,
-                        isSi,
-                        handleCall,
-                        handleReschedule,
-                        handleOpenManualReschedule
-                      )
-                    )}
+                    {regularItems.map((item) => (
+                      <ScheduleActionCard
+                        key={item.id}
+                        item={item}
+                        isSi={isSi}
+                        onCall={handleCall}
+                        onReschedule7d={handleReschedule}
+                        onOpenManualReschedule={handleOpenManualReschedule}
+                      />
+                    ))}
                   </View>
                 )}
               </>
@@ -676,539 +496,51 @@ export default function ScheduleScreen() {
   );
 }
 
-function renderActionCard(
-  item: AutoPopulatedItem,
-  router: any,
-  isSi: boolean,
-  handleCall: (phone?: string) => void,
-  handleReschedule: (taskId: string, targetName: string) => void,
-  handleOpenManualReschedule: (item: AutoPopulatedItem) => void
-) {
-  if (item.type === 'SUMMARY') {
-    return (
-      <View key={item.id} style={styles.summaryCard}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.summaryTitle}>📊 {item.name}</Text>
-          <View style={styles.summaryPill}>
-            <Text style={styles.summaryPillText}>{item.badgeText}</Text>
-          </View>
-        </View>
-        <Text style={styles.summaryReason}>{item.reason}</Text>
-        <TouchableOpacity
-          style={styles.openH509Btn}
-          onPress={() => router.push('/(tabs)/area')}
-        >
-          <Text style={styles.openH509BtnText}>
-            {isSi ? 'H509 වාර්තාව සහ ප්‍රදේශ දළ විශ්ලේෂණය බලන්න ›' : 'Open H509 Monthly Report ›'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const isMother = item.type === 'MOTHER' || (item.type === 'TASK' && item.motherId);
-  const profileId = item.motherId || item.childId || item.targetId;
-
-  return (
-    <View key={item.id} style={styles.actionCard}>
-      {/* Top row: Name & Badges */}
-      <View style={styles.cardHeader}>
-        <View style={styles.nameBlock}>
-          <Text style={styles.targetName}>
-            {item.childId ? '👶 ' : '🤰 '}
-            {item.name}
-          </Text>
-          {item.gnDivision && (
-            <Text style={styles.targetGn}>📍 {item.gnDivision}</Text>
-          )}
-        </View>
-
-        <View style={styles.badgeWrapRow}>
-          <View
-            style={[
-              styles.itemBadge,
-              item.badgeColor === 'red'
-                ? styles.badgeRed
-                : item.badgeColor === 'yellow'
-                ? styles.badgeYellow
-                : item.badgeColor === 'blue'
-                ? styles.badgeBlue
-                : styles.badgeGreen,
-            ]}
-          >
-            <Text
-              style={[
-                styles.itemBadgeText,
-                item.badgeColor === 'red'
-                  ? styles.badgeRedText
-                  : item.badgeColor === 'yellow'
-                  ? styles.badgeYellowText
-                  : item.badgeColor === 'blue'
-                  ? styles.badgeBlueText
-                  : styles.badgeGreenText,
-              ]}
-            >
-              {item.badgeText}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Reason subtitle */}
-      <Text style={styles.reasonText}>{item.reason}</Text>
-
-      {/* 2x2 Action Button Grid */}
-      <View style={styles.actionGrid}>
-        {/* Row 1: Primary Clinical Action + Profile Navigation */}
-        <View style={styles.actionGridRow}>
-          {/* Primary Action Button */}
-          <TouchableOpacity
-            activeOpacity={0.75}
-            style={styles.actionBtnPrimary}
-            onPress={() => {
-              if (isMother) {
-                if (item.pregnancyId) {
-                  router.push(`/mother/visit/${item.pregnancyId}` as any);
-                } else {
-                  router.push(`/mother/${profileId}` as any);
-                }
-              } else {
-                router.push(`/child/log-growth/${profileId}` as any);
-              }
-            }}
-          >
-            <Text style={styles.actionBtnPrimaryText} numberOfLines={1}>
-              📝 {isMother ? (isSi ? 'සංචාරය සටහන්' : 'Log Visit') : (isSi ? 'වර්ධනය / එන්නත්' : 'Growth / EPI')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Profile Navigation Button */}
-          <TouchableOpacity
-            activeOpacity={0.75}
-            style={styles.actionBtnSecondary}
-            onPress={() => {
-              if (isMother) {
-                router.push(`/mother/${profileId}`);
-              } else {
-                router.push(`/child/${profileId}`);
-              }
-            }}
-          >
-            <Text style={styles.actionBtnSecondaryText} numberOfLines={1}>
-              👤 {isSi ? 'ප්‍රොෆයිලය' : 'Profile'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Row 2: Communication & Scheduling Actions */}
-        <View style={styles.actionGridRow}>
-          {/* Col 1: Call Button (or Postpone 7d if no phone) */}
-          {item.phone ? (
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.actionBtnCall}
-              onPress={() => handleCall(item.phone)}
-            >
-              <Text style={styles.actionBtnCallText} numberOfLines={1}>
-                📞 {isSi ? 'අමතන්න' : 'Call'}
-              </Text>
-            </TouchableOpacity>
-          ) : item.taskId ? (
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.actionBtnReschedule}
-              onPress={() => handleReschedule(item.taskId!, item.name)}
-            >
-              <Text style={styles.actionBtnRescheduleText} numberOfLines={1}>
-                ⏩ {isSi ? '+7d කල් දමන්න' : '+7d Postpone'}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.actionBtnMoveDate}
-              onPress={() => handleOpenManualReschedule(item)}
-            >
-              <Text style={styles.actionBtnMoveDateText} numberOfLines={1}>
-                📅 {isSi ? 'දිනය වෙනස් කරන්න' : 'Reschedule Visit'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Col 2: Rescheduling (Split if both phone and +7d task are present) */}
-          {item.phone && item.taskId ? (
-            <View style={styles.rescheduleSplitGroup}>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.actionBtnRescheduleMini}
-                onPress={() => handleReschedule(item.taskId!, item.name)}
-              >
-                <Text style={styles.actionBtnRescheduleMiniText}>+7d</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.75}
-                style={styles.actionBtnMoveDateMini}
-                onPress={() => handleOpenManualReschedule(item)}
-              >
-                <Text style={styles.actionBtnMoveDateMiniText} numberOfLines={1}>
-                  📅 {isSi ? 'දිනය' : 'Date'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : item.phone ? (
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.actionBtnMoveDate}
-              onPress={() => handleOpenManualReschedule(item)}
-            >
-              <Text style={styles.actionBtnMoveDateText} numberOfLines={1}>
-                📅 {isSi ? 'දිනය වෙනස්' : 'Reschedule'}
-              </Text>
-            </TouchableOpacity>
-          ) : item.taskId ? (
-            <TouchableOpacity
-              activeOpacity={0.75}
-              style={styles.actionBtnMoveDate}
-              onPress={() => handleOpenManualReschedule(item)}
-            >
-              <Text style={styles.actionBtnMoveDateText} numberOfLines={1}>
-                📅 {isSi ? 'වෙනත් දිනයක්' : 'Pick Date'}
-              </Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      </View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  topControlCard: {
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(15, 23, 42, 0.08)',
-    paddingTop: 12,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    ...SHADOWS.card,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  titleWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  calendarIcon: {
-    fontSize: 26,
-    marginRight: 10,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#0F172A',
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 1,
-  },
-  setupBtn: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  setupBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  navRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  arrowBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  arrowText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#475569',
-    marginTop: -2,
-  },
-  weekCenterBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  weekRangeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  todayChip: {
-    backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: COLORS.primaryBorder,
-  },
-  todayChipText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.primaryDeep,
-  },
-  daysStrip: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 4,
-  },
-  dayPill: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  dayPillSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  dayPillToday: {
-    borderColor: COLORS.primary,
-    borderWidth: 1.5,
-  },
-  dayShortName: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 2,
-  },
-  dayShortNameSelected: {
-    color: '#FFFFFF',
-  },
-  dayNumber: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 4,
-  },
-  dayNumberSelected: {
-    color: '#FFFFFF',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
   scrollContent: {
     padding: 16,
-    paddingBottom: 50,
-  },
-  planBanner: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    ...SHADOWS.card,
-  },
-  planBannerOverride: {
-    borderColor: '#F59E0B',
-    backgroundColor: '#FFFDF5',
-  },
-  bannerHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  bannerBadgeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    alignItems: 'center',
-  },
-  activityBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgeClinic: {
-    backgroundColor: '#E0F2FE',
-  },
-  badgeHome: {
-    backgroundColor: '#DCFCE7',
-  },
-  badgeOffice: {
-    backgroundColor: '#F3E8FF',
-  },
-  badgeRest: {
-    backgroundColor: '#F1F5F9',
-  },
-  activityBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  modifiedPill: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  modifiedPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#92400E',
-  },
-  overrideBtn: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  overrideBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  planTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 8,
-  },
-  planMetaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  metaChip: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  metaChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  notesBox: {
-    backgroundColor: '#F8FAFC',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: '#CBD5E1',
-  },
-  notesText: {
-    fontSize: 12,
-    color: '#475569',
-    fontStyle: 'italic',
-  },
-  resetPlanLink: {
-    marginTop: 10,
-    alignSelf: 'flex-start',
-  },
-  resetPlanLinkText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#D97706',
-  },
-  emptyDayContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginTop: 10,
-  },
-  emptyDayEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  emptyDayTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#1E293B',
-    marginBottom: 6,
-  },
-  emptyDaySub: {
-    fontSize: 13,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 19,
+    paddingBottom: 40,
   },
   itemsSection: {
-    marginTop: 6,
+    marginTop: 8,
   },
   actionHeaderRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
-    gap: 8,
   },
   sectionHeading: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#0F172A',
   },
   countBadge: {
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: '#0D9488',
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.primaryBorder,
+    borderRadius: 9999,
   },
   countBadgeText: {
     fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.primaryDeep,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   noItemsBox: {
     backgroundColor: '#FFFFFF',
-    padding: 20,
     borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderStyle: 'dashed',
+    padding: 24,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
   },
   noItemsText: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: '#64748B',
     textAlign: 'center',
   },
   groupContainer: {
@@ -1218,342 +550,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   priorityGroupTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#DC2626',
   },
   regularGroupTitle: {
     fontSize: 14,
-    fontWeight: '800',
-    color: '#334155',
+    fontWeight: '700',
+    color: '#0D9488',
   },
   groupCount: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: '#64748B',
   },
-  actionCard: {
+  emptyDayContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: 18,
+    padding: 32,
+    alignItems: 'center',
+    marginTop: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...SHADOWS.card,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  emptyDayIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  emptyDayTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
     marginBottom: 6,
   },
-  nameBlock: {
-    flex: 1,
-    marginRight: 8,
-  },
-  targetName: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  targetGn: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  badgeWrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  itemBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  itemBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  badgeRed: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FECACA',
-  },
-  badgeRedText: {
-    color: '#DC2626',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  badgeYellow: {
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  badgeYellowText: {
-    color: '#B45309',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  badgeBlue: {
-    backgroundColor: '#E0F2FE',
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  badgeBlueText: {
-    color: '#0369A1',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  badgeGreen: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-  },
-  badgeGreenText: {
-    color: '#047857',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  reasonText: {
-    fontSize: 12.5,
-    color: '#475569',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  actionGrid: {
-    gap: 8,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  actionGridRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  actionBtnSecondary: {
-    flex: 1,
-    height: 44,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionBtnSecondaryText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  actionBtnPrimary: {
-    flex: 1,
-    height: 44,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionBtnPrimaryText: {
-    fontSize: 12.5,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  actionBtnCall: {
-    flex: 1,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: '#DCFCE7',
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  actionBtnCallText: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#15803D',
-  },
-  actionBtnReschedule: {
-    flex: 1,
-    height: 44,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionBtnRescheduleText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#B45309',
-  },
-  rescheduleSplitGroup: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 6,
-  },
-  actionBtnRescheduleMini: {
-    flex: 0.9,
-    height: 44,
-    backgroundColor: '#FFFBEB',
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionBtnRescheduleMiniText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#B45309',
-  },
-  actionBtnMoveDateMini: {
-    flex: 1.1,
-    height: 44,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  actionBtnMoveDateMiniText: {
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  actionBtnMoveDate: {
-    flex: 1,
-    height: 44,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  actionBtnMoveDateText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  summaryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-    ...SHADOWS.card,
-  },
-  summaryTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  summaryPill: {
-    backgroundColor: '#E0F2FE',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  summaryPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0369A1',
-  },
-  summaryReason: {
+  emptyDaySub: {
     fontSize: 13,
-    color: '#475569',
-    marginTop: 6,
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  openH509Btn: {
-    backgroundColor: '#0284C7',
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  openH509BtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  overloadBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: '#FECACA',
-    ...SHADOWS.card,
-  },
-  overloadBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 10,
-  },
-  overloadAlertIcon: {
-    fontSize: 26,
-    marginRight: 10,
-  },
-  overloadInfo: {
-    flex: 1,
-  },
-  overloadHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 2,
-  },
-  overloadTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#991B1B',
-  },
-  overloadCountPill: {
-    backgroundColor: '#DC2626',
-    paddingHorizontal: 7,
-    paddingVertical: 1,
-    borderRadius: 6,
-  },
-  overloadCountText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  overloadSub: {
-    fontSize: 11.5,
-    color: '#7F1D1D',
-    lineHeight: 16,
-  },
-  autoBalanceBtn: {
-    backgroundColor: '#DC2626',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  autoBalanceBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
+    color: '#64748B',
+    textAlign: 'center',
   },
 });

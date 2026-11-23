@@ -46,6 +46,8 @@ export interface AutoPopulatedItem {
   pregnancyId?: string;
   childId?: string;
   isOverdue?: boolean;
+  gps_lat?: number | null;
+  gps_lng?: number | null;
 }
 
 /**
@@ -342,10 +344,14 @@ export async function getAutoPopulatedItemsForDay(
       target_name: string;
       gn_division: string;
       phone: string;
+      gps_lat: number | null;
+      gps_lng: number | null;
     }>(
       `SELECT t.*, 
         CASE WHEN t.target_type = 'MOTHER' THEN m.full_name ELSE c.full_name END as target_name,
         f.gn_division,
+        f.gps_lat,
+        f.gps_lng,
         CASE WHEN t.target_type = 'MOTHER' THEN m.phone ELSE mp.phone END as phone
        FROM tasks t
        LEFT JOIN mothers m ON t.target_type = 'MOTHER' AND t.target_id = m.id
@@ -353,6 +359,7 @@ export async function getAutoPopulatedItemsForDay(
        LEFT JOIN mothers mp ON c.mother_id = mp.id
        LEFT JOIN families f ON (m.family_id = f.id OR mp.family_id = f.id)
        WHERE t.deleted_at IS NULL AND t.status IN ('OPEN', 'OVERDUE')
+         AND (f.residency_status IS NULL OR f.residency_status = 'ACTIVE')
          AND (? IS NULL OR f.gn_division = ?)
        ORDER BY CASE WHEN t.status = 'OVERDUE' THEN 0 WHEN t.priority = 'URGENT' THEN 1 ELSE 2 END, t.due_date ASC`,
       [gn || null, gn || null]
@@ -375,6 +382,8 @@ export async function getAutoPopulatedItemsForDay(
         motherId: t.target_type === 'MOTHER' ? t.target_id : undefined,
         childId: t.target_type === 'CHILD' ? t.target_id : undefined,
         isOverdue,
+        gps_lat: t.gps_lat,
+        gps_lng: t.gps_lng,
       });
     }
 
@@ -384,17 +393,20 @@ export async function getAutoPopulatedItemsForDay(
       full_name: string;
       phone: string;
       gn_division: string;
+      gps_lat: number | null;
+      gps_lng: number | null;
       pregnancy_id: string | null;
       risk_level: string | null;
       risk_score: number | null;
       edd_date: string | null;
     }>(
-      `SELECT m.id as mother_id, m.full_name, m.phone, f.gn_division,
+      `SELECT m.id as mother_id, m.full_name, m.phone, f.gn_division, f.gps_lat, f.gps_lng,
               p.id as pregnancy_id, p.risk_level, p.risk_score, p.edd_date
        FROM mothers m
        JOIN families f ON m.family_id = f.id
        LEFT JOIN pregnancies p ON p.mother_id = m.id AND p.status = 'ACTIVE'
        WHERE m.deleted_at IS NULL
+         AND (f.residency_status IS NULL OR f.residency_status = 'ACTIVE')
          AND (? IS NULL OR f.gn_division = ?)
        ORDER BY 
          CASE WHEN p.risk_level = 'RED' THEN 0 
@@ -436,6 +448,8 @@ export async function getAutoPopulatedItemsForDay(
         reason,
         phone: m.phone,
         riskLevel: m.risk_level || undefined,
+        gps_lat: m.gps_lat,
+        gps_lng: m.gps_lng,
       });
     }
 
@@ -447,12 +461,15 @@ export async function getAutoPopulatedItemsForDay(
       growth_faltering_flag: number;
       gn_division: string;
       phone: string;
+      gps_lat: number | null;
+      gps_lng: number | null;
     }>(
-      `SELECT c.id, c.full_name, c.nutrition_status, c.growth_faltering_flag, f.gn_division, m.phone
+      `SELECT c.id, c.full_name, c.nutrition_status, c.growth_faltering_flag, f.gn_division, m.phone, f.gps_lat, f.gps_lng
        FROM children c
        JOIN mothers m ON c.mother_id = m.id
        JOIN families f ON m.family_id = f.id
        WHERE c.deleted_at IS NULL AND c.growth_faltering_flag = 1
+         AND (f.residency_status IS NULL OR f.residency_status = 'ACTIVE')
          AND (? IS NULL OR f.gn_division = ?)`,
       [gn || null, gn || null]
     );
@@ -470,6 +487,8 @@ export async function getAutoPopulatedItemsForDay(
         badgeColor: 'red',
         reason: `Nutritional assessment: Child flagged with faltering weight (${c.nutrition_status}). Check Thriposha and feeding.`,
         phone: c.phone,
+        gps_lat: c.gps_lat,
+        gps_lng: c.gps_lng,
       });
     }
 
@@ -484,18 +503,21 @@ export async function getAutoPopulatedItemsForDay(
       full_name: string;
       phone: string;
       gn_division: string;
+      gps_lat: number | null;
+      gps_lng: number | null;
       risk_level: string;
       risk_score: number;
       edd_date: string;
       next_visit_date: string | null;
     }>(
-      `SELECT m.id as mother_id, p.id as pregnancy_id, m.full_name, m.phone, f.gn_division,
+      `SELECT m.id as mother_id, p.id as pregnancy_id, m.full_name, m.phone, f.gn_division, f.gps_lat, f.gps_lng,
               p.risk_level, p.risk_score, p.edd_date,
               (SELECT next_visit_date FROM antenatal_visits v WHERE v.pregnancy_id = p.id AND v.deleted_at IS NULL ORDER BY visit_date DESC LIMIT 1) as next_visit_date
        FROM pregnancies p
        JOIN mothers m ON p.mother_id = m.id
        JOIN families f ON m.family_id = f.id
        WHERE p.deleted_at IS NULL AND p.status = 'ACTIVE'
+         AND (f.residency_status IS NULL OR f.residency_status = 'ACTIVE')
        ORDER BY CASE WHEN p.risk_level = 'RED' THEN 0 WHEN p.risk_level = 'YELLOW' THEN 1 ELSE 2 END, m.full_name ASC`
     );
 
@@ -522,6 +544,8 @@ export async function getAutoPopulatedItemsForDay(
         reason,
         phone: m.phone,
         riskLevel: m.risk_level,
+        gps_lat: m.gps_lat,
+        gps_lng: m.gps_lng,
       });
     }
 
@@ -541,14 +565,17 @@ export async function getAutoPopulatedItemsForDay(
       imm_status: string;
       phone: string;
       gn_division: string;
+      gps_lat: number | null;
+      gps_lng: number | null;
     }>(
       `SELECT i.id as imm_id, i.child_id, c.full_name as child_name, i.vaccine_code, i.vaccine_name,
-              i.scheduled_date, i.status as imm_status, m.phone, f.gn_division
+              i.scheduled_date, i.status as imm_status, m.phone, f.gn_division, f.gps_lat, f.gps_lng
        FROM immunizations i
        JOIN children c ON i.child_id = c.id
        JOIN mothers m ON c.mother_id = m.id
        JOIN families f ON m.family_id = f.id
        WHERE i.deleted_at IS NULL AND i.status IN ('PENDING', 'OVERDUE')
+         AND (f.residency_status IS NULL OR f.residency_status = 'ACTIVE')
        ORDER BY CASE WHEN i.status = 'OVERDUE' THEN 0 ELSE 1 END, i.scheduled_date ASC`
     );
 
@@ -566,6 +593,8 @@ export async function getAutoPopulatedItemsForDay(
         reason: `EPI Clinic: ${imm.vaccine_name} due (${imm.scheduled_date})`,
         phone: imm.phone,
         isOverdue,
+        gps_lat: imm.gps_lat,
+        gps_lng: imm.gps_lng,
       });
     }
 
@@ -576,12 +605,15 @@ export async function getAutoPopulatedItemsForDay(
       nutrition_status: string;
       phone: string;
       gn_division: string;
+      gps_lat: number | null;
+      gps_lng: number | null;
     }>(
-      `SELECT c.id, c.full_name, c.nutrition_status, m.phone, f.gn_division
+      `SELECT c.id, c.full_name, c.nutrition_status, m.phone, f.gn_division, f.gps_lat, f.gps_lng
        FROM children c
        JOIN mothers m ON c.mother_id = m.id
        JOIN families f ON m.family_id = f.id
-       WHERE c.deleted_at IS NULL AND c.growth_faltering_flag = 1`
+       WHERE c.deleted_at IS NULL AND c.growth_faltering_flag = 1
+         AND (f.residency_status IS NULL OR f.residency_status = 'ACTIVE')`
     );
 
     for (const f of faltering) {
@@ -594,9 +626,11 @@ export async function getAutoPopulatedItemsForDay(
         name: f.full_name,
         gnDivision: f.gn_division,
         badgeText: 'වර්ධන ගැටලුවක්',
-        badgeColor: 'red',
-        reason: `CWC Clinic: Weight monitoring and Thriposha nutritional review (${f.nutrition_status})`,
+        badgeColor: 'yellow',
+        reason: `CWC Follow-up: Nutritional counseling required for child (${f.nutrition_status}).`,
         phone: f.phone,
+        gps_lat: f.gps_lat,
+        gps_lng: f.gps_lng,
       });
     }
 

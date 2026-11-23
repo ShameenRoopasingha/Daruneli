@@ -13,6 +13,11 @@ export const CREATE_TABLES_SQL = `
     husband_name TEXT,
     emergency_phone TEXT,
     residency_status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(residency_status IN ('ACTIVE', 'TEMP_OUT', 'TRANSFERRED_OUT')),
+    gps_lat REAL,
+    gps_lng REAL,
+    temp_out_return_date TEXT,
+    transfer_note TEXT,
+    transferred_to_phm_area TEXT,
     is_dirty INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -82,6 +87,9 @@ export const CREATE_TABLES_SQL = `
     supplements_json TEXT DEFAULT '[]',
     notes TEXT,
     next_visit_date TEXT,
+    voice_note_local_uri TEXT,
+    voice_note_remote_url TEXT,
+    voice_note_duration_sec INTEGER,
     is_dirty INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -221,10 +229,30 @@ export const CREATE_TABLES_SQL = `
     deleted_at TEXT
   );
 
+  CREATE TABLE IF NOT EXISTS mother_transfers (
+    id TEXT PRIMARY KEY,
+    phm_area_id TEXT NOT NULL DEFAULT '${DEFAULT_PHM_AREA_ID}',
+    family_id TEXT NOT NULL REFERENCES families(id),
+    mother_id TEXT NOT NULL REFERENCES mothers(id),
+    transfer_type TEXT NOT NULL CHECK(transfer_type IN ('TEMP_OUT', 'PERMANENT_TRANSFER')),
+    destination_area TEXT,
+    expected_return_date TEXT,
+    handover_summary_json TEXT DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK(status IN ('ACTIVE', 'RETURNED', 'COMPLETED')),
+    is_dirty INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    deleted_at TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS sync_meta (
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  CREATE INDEX IF NOT EXISTS idx_transfers_mother ON mother_transfers(mother_id);
+  CREATE INDEX IF NOT EXISTS idx_transfers_family ON mother_transfers(family_id);
+  CREATE INDEX IF NOT EXISTS idx_transfers_status ON mother_transfers(status);
 
   CREATE INDEX IF NOT EXISTS idx_mothers_family ON mothers(family_id);
   CREATE INDEX IF NOT EXISTS idx_mothers_qr ON mothers(qr_token);

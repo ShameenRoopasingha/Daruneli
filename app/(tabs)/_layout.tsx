@@ -38,6 +38,7 @@ export default function TabLayout() {
           fontWeight: '700',
           marginTop: -2,
         },
+        tabBarAllowFontScaling: false,
         headerStyle: {
           backgroundColor: '#FFFFFF',
         },

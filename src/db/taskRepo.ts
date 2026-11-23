@@ -75,7 +75,14 @@ export async function getTodaysTasks(): Promise<Task[]> {
         ELSE NULL
       END as gn_division
     FROM tasks t 
-    WHERE t.deleted_at IS NULL AND (t.due_date <= ? OR t.status = 'OVERDUE') AND t.status != 'COMPLETED'
+    LEFT JOIN mothers m ON t.target_type = 'MOTHER' AND t.target_id = m.id
+    LEFT JOIN children c ON t.target_type = 'CHILD' AND t.target_id = c.id
+    LEFT JOIN mothers mp ON c.mother_id = mp.id
+    LEFT JOIN families f ON (m.family_id = f.id OR mp.family_id = f.id)
+    WHERE t.deleted_at IS NULL 
+      AND (t.due_date <= ? OR t.status = 'OVERDUE') 
+      AND t.status != 'COMPLETED'
+      AND (f.residency_status IS NULL OR f.residency_status = 'ACTIVE')
     ORDER BY CASE t.priority WHEN 'URGENT' THEN 0 WHEN 'HIGH' THEN 1 ELSE 2 END, t.due_date ASC
   `,
     [today]

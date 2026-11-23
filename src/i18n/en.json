@@ -274,5 +274,57 @@
     "heartDisease": "Heart Disease",
     "diabetes": "Diabetes Mellitus",
     "hypertension": "Hypertension"
+  },
+  "security": {
+    "title": "Security & Privacy",
+    "appLock": "App PIN & Biometric Lock",
+    "appLockDesc": "Protect sensitive health records when leaving device unattended",
+    "pinLock": "4-Digit PIN Lock",
+    "setPin": "Set PIN",
+    "changePin": "Change PIN",
+    "pinSetSuccess": "PIN set successfully",
+    "biometricLock": "Biometric Unlock (Fingerprint / FaceID)",
+    "autoLockTimeout": "Auto-Lock Timeout",
+    "minutes_1": "1 minute",
+    "minutes_5": "5 minutes (Default)",
+    "minutes_15": "15 minutes",
+    "locked": "App is Locked",
+    "enterPin": "Enter 4-Digit PIN",
+    "invalidPin": "Invalid PIN"
+  },
+  "gps": {
+    "pinHomeGps": "Pin Home GPS",
+    "updateGps": "Update GPS Location",
+    "getDirections": "Directions (Maps)",
+    "gpsPinnedSuccess": "Home GPS location pinned successfully",
+    "gpsPermissionDenied": "Location permission was denied",
+    "gpsAccuracy": "Accuracy",
+    "latitude": "Lat",
+    "longitude": "Lng"
+  },
+  "transfers": {
+    "transferTitle": "Transfer / Relocation",
+    "markTempOut": "Temporarily Out (TEMP_OUT)",
+    "markPermanentTransfer": "Permanent Transfer (Out of Area)",
+    "tempOut": "Temporarily Out",
+    "transferredOut": "Transferred Out",
+    "expectedReturn": "Expected Return Date",
+    "destinationArea": "Destination MOH / PHM Area",
+    "transferNotes": "Transfer Notes & Reason",
+    "markReturned": "Mark Returned (Active)",
+    "markReturnedSuccess": "Mother/Family marked as returned and active",
+    "handoverSummary": "Generate Handover Summary PDF",
+    "generatingSummary": "Generating Handover PDF...",
+    "handoverPdfSuccess": "Handover summary generated and shared"
+  },
+  "voiceNote": {
+    "recordNote": "Record Voice Clinical Note",
+    "recording": "Recording...",
+    "tapToRecord": "Tap mic to record (max 60s)",
+    "tapToStop": "Tap to stop recording",
+    "playPreview": "Play Preview",
+    "deleteNote": "Delete Voice Note",
+    "voiceNoteSaved": "Voice note attached to visit record",
+    "audioPermissionDenied": "Microphone permission is required to record audio notes"
   }
 }

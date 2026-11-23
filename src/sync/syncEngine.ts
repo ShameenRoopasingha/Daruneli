@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import {
   SYNC_TABLES,
@@ -8,6 +9,7 @@ import {
   setSyncMeta,
   setLastSyncedAt,
   DEFAULT_PHM_AREA_ID,
+  getDatabase,
 } from '../db';
 
 export interface SyncResult {
@@ -30,10 +32,51 @@ function isValidUuid(val: any): boolean {
 // Tables that contain JSON columns in SQLite that should be parsed into JSON objects for Postgres jsonb
 const JSON_COLUMNS_BY_TABLE: Record<string, string[]> = {
   mothers: ['chronic_conditions_json'],
+  mother_transfers: ['handover_summary_json'],
   pregnancies: ['risk_factors_json', 'hospital_delivery_notes_json'],
   antenatal_visits: ['danger_signs_json', 'supplements_json'],
   child_growth_records: ['milestones_json', 'supplements_json'],
 };
+
+function base64ToArrayBuffer(base64: string): ArrayBuffer {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
+async function tryUploadVoiceNote(
+  phmAreaId: string,
+  visitId: string,
+  localUri: string
+): Promise<string | null> {
+  try {
+    const fileInfo = await FileSystem.getInfoAsync(localUri);
+    if (!fileInfo.exists) return null;
+
+    const base64 = await FileSystem.readAsStringAsync(localUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const arrayBuffer = base64ToArrayBuffer(base64);
+    const remotePath = `${phmAreaId}/${visitId}.m4a`;
+
+    const { data, error } = await supabase.storage
+      .from('voice-notes')
+      .upload(remotePath, arrayBuffer, {
+        contentType: 'audio/m4a',
+        upsert: true,
+      });
+
+    if (error || !data) {
+      return null;
+    }
+    return remotePath;
+  } catch {
+    return null;
+  }
+}
 
 function prepareRowForPush(table: string, row: Record<string, any>): Record<string, any> | null {
   const clean: Record<string, any> = { ...row };
@@ -53,10 +96,11 @@ function prepareRowForPush(table: string, row: Record<string, any>): Record<stri
 
   // Sanitize foreign key UUID references
   if (clean.family_id !== undefined && !isValidUuid(clean.family_id)) {
+    if (table === 'mother_transfers') return null; // Required FK
     clean.family_id = null;
   }
   if (clean.mother_id !== undefined && !isValidUuid(clean.mother_id)) {
-    if (table === 'pregnancies') return null; // Required FK
+    if (table === 'pregnancies' || table === 'mother_transfers') return null; // Required FK
     clean.mother_id = null;
   }
   if (clean.pregnancy_id !== undefined && !isValidUuid(clean.pregnancy_id)) {
@@ -135,6 +179,31 @@ export async function runFullSync(): Promise<SyncResult> {
       try {
         const dirtyRows = await getDirtyRows(table);
         if (dirtyRows.length > 0) {
+          // If pushing antenatal_visits, upload any pending voice notes to Supabase Storage
+          if (table === 'antenatal_visits') {
+            for (const row of dirtyRows) {
+              if (row.voice_note_local_uri && !row.voice_note_remote_url) {
+                const remotePath = await tryUploadVoiceNote(
+                  row.phm_area_id || DEFAULT_PHM_AREA_ID,
+                  row.id,
+                  row.voice_note_local_uri
+                );
+                if (remotePath) {
+                  row.voice_note_remote_url = remotePath;
+                  try {
+                    const db = await getDatabase();
+                    await db.runAsync(
+                      'UPDATE antenatal_visits SET voice_note_remote_url = ? WHERE id = ?',
+                      [remotePath, row.id]
+                    );
+                  } catch {
+                    // Non-blocking
+                  }
+                }
+              }
+            }
+          }
+
           const payload = dirtyRows
             .map((r) => prepareRowForPush(table, r))
             .filter((r): r is Record<string, any> => r !== null);

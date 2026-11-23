@@ -20,7 +20,6 @@ import {
   type Task,
   type MotherWithPregnancy,
 } from '@/src/db';
-import { RiskBadge } from '@/src/components/RiskBadge';
 import { useAutoSync } from '@/src/sync';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 import { GestationalWheelTool } from '@/src/components/charts';
@@ -32,15 +31,11 @@ import {
   resolveDayPlan,
   type ResolvedDayPlan,
 } from '@/src/engine/scheduleEngine';
-
-function formatDisplayDate(isoDate?: string | null): string {
-  if (!isoDate) return '';
-  const parts = isoDate.split('-');
-  if (parts.length === 3) {
-    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  return isoDate;
-}
+import {
+  DashboardMetricsGrid,
+  OverdueAlertSection,
+  HighRiskWatchlist,
+} from '@/src/components/dashboard';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -67,7 +62,14 @@ export default function DashboardScreen() {
 
       setStats(areaStats);
       setTasks(todaysTasks);
-      setRedMothers(allMothers.filter((m) => m.risk_level === 'RED'));
+      // Exclude TEMP_OUT / TRANSFERRED_OUT mothers from high-risk watchlist
+      setRedMothers(
+        allMothers.filter(
+          (m) =>
+            m.risk_level === 'RED' &&
+            (!m.residency_status || m.residency_status === 'ACTIVE')
+        )
+      );
       setTodayPlan(resolveDayPlan(todayStr, allTemplates, todayOverrides));
     } catch (e) {
       console.error('Error loading dashboard data:', e);
@@ -88,17 +90,17 @@ export default function DashboardScreen() {
 
   const handleCall = (phone?: string) => {
     if (!phone) {
-      Alert.alert('No Phone', 'No phone number available for this contact.');
+      Alert.alert(t('common.error', 'No Phone'), 'No phone number available for this contact.');
       return;
     }
     Linking.openURL(`tel:${phone}`).catch(() => {
-      Alert.alert('Call Failed', `Could not initiate call to ${phone}`);
+      Alert.alert(t('common.error', 'Call Failed'), `Could not initiate call to ${phone}`);
     });
   };
 
   const handleWhatsApp = (phone?: string, name?: string) => {
     if (!phone) {
-      Alert.alert('No Phone', 'No phone number recorded.');
+      Alert.alert(t('common.error', 'No Phone'), 'No phone number recorded.');
       return;
     }
     const cleanPhone = phone.replace(/^0/, '+94'); // Sri Lanka country code
@@ -110,7 +112,7 @@ export default function DashboardScreen() {
     const url = `whatsapp://send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
     Linking.openURL(url).catch(() => {
       Linking.openURL(`sms:${phone}?body=${encodeURIComponent(message)}`).catch(() => {
-        Alert.alert('Message Failed', 'Could not open WhatsApp or SMS app.');
+        Alert.alert(t('common.error', 'Message Failed'), 'Could not open WhatsApp or SMS app.');
       });
     });
   };
@@ -118,22 +120,24 @@ export default function DashboardScreen() {
   const handleCompleteTask = (taskId: string, targetName?: string, taskNotes?: string) => {
     const isSi = i18n.language === 'si';
     const patientStr = targetName ? ` (${targetName})` : '';
+
     Alert.alert(
-      isSi ? 'කාර්යය සම්පූර්ණ කළ බව තහවුරු කරන්න' : 'Confirm Task Completion',
+      isSi ? 'කාර්යය සම්පූර්ණ කිරීම' : 'Complete Task',
       isSi
-        ? `${targetName || 'මෙම රෝගියා'} සඳහා වූ සායනික කාර්යය සම්පූර්ණ කළ බව සටහන් කිරීමට ඔබට අවශ්‍යද?${taskNotes ? `\n\nවිස්තරය: ${taskNotes}` : ''}`
-        : `Are you sure you want to mark this clinical checkup${patientStr} as completed?${taskNotes ? `\n\nDetails: ${taskNotes}` : ''}`,
+        ? `මෙම කාර්යය සම්පූර්ණ කළ බව සටහන් කරන්නද?${patientStr}`
+        : `Mark this task as completed?${patientStr}`,
       [
-        { text: isSi ? 'අවලංගු කරන්න' : 'Cancel', style: 'cancel' },
+        { text: isSi ? 'අවලංගුයි' : 'Cancel', style: 'cancel' },
         {
-          text: isSi ? 'සම්පූර්ණයි' : 'Mark Completed',
+          text: isSi ? 'සම්පූර්ණයි' : 'Mark Done',
           style: 'default',
           onPress: async () => {
             try {
               await completeTask(taskId);
               await loadData();
-            } catch (e: any) {
-              Alert.alert('Error', e?.message || 'Failed to complete task');
+              await autoSync.refreshStatus();
+            } catch (err: any) {
+              Alert.alert('Error', err?.message || 'Failed to complete task');
             }
           },
         },
@@ -141,16 +145,24 @@ export default function DashboardScreen() {
     );
   };
 
-  const overdueTasks = tasks.filter((task) => task.status === 'OVERDUE');
-  const todayUpcomingTasks = tasks.filter((task) => task.status !== 'OVERDUE');
+  const handleViewProfile = (targetId: string, targetType: 'MOTHER' | 'CHILD') => {
+    if (targetType === 'MOTHER') {
+      router.push(`/mother/${targetId}` as any);
+    } else {
+      router.push(`/child/${targetId}` as any);
+    }
+  };
 
-  // Group today's tasks by GN Division
-  const tasksByGN: Record<string, Task[]> = {};
-  todayUpcomingTasks.forEach((task) => {
-    const gn = task.gn_division || 'General Area';
-    if (!tasksByGN[gn]) tasksByGN[gn] = [];
-    tasksByGN[gn].push(task);
-  });
+  const overdueTasks = tasks.filter((t) => t.status === 'OVERDUE');
+  const todayUpcomingTasks = tasks.filter((t) => t.status !== 'OVERDUE' && t.status !== 'COMPLETED');
+
+  // Group today's upcoming tasks by GN division
+  const tasksByGN = todayUpcomingTasks.reduce<Record<string, Task[]>>((acc, t) => {
+    const gn = t.gn_division || 'General / Unassigned';
+    if (!acc[gn]) acc[gn] = [];
+    acc[gn].push(t);
+    return acc;
+  }, {});
 
   return (
     <ScrollView
@@ -161,20 +173,21 @@ export default function DashboardScreen() {
           refreshing={refreshing}
           onRefresh={onRefresh}
           tintColor={COLORS.primary}
-          colors={[COLORS.primary]}
         />
       }
     >
-      {/* 0. SYNC & CONNECTIVITY STATUS PILL */}
+      {/* 0. SYNC STATUS PILL BAR */}
       <View style={styles.syncBar}>
         <TouchableOpacity
-          activeOpacity={0.7}
+          activeOpacity={0.8}
           style={[styles.syncPill, autoSync.isOnline ? styles.syncOnline : styles.syncOffline]}
+          disabled={autoSync.isSyncingNow}
           onPress={async () => {
             const res = await autoSync.triggerSync();
+            await loadData();
             if (!res.success && res.message.includes('Sign in')) {
-              Alert.alert('Staff Sign-In Required', res.message, [
-                { text: 'Continue Offline', style: 'cancel' },
+              Alert.alert('Cloud Sync', res.message, [
+                { text: 'Later', style: 'cancel' },
                 { text: 'Sign In', onPress: () => router.push('/login' as any) },
               ]);
             } else {
@@ -273,199 +286,22 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       )}
 
-      {/* 1. TOP METRIC CARDS */}
-      <View style={styles.metricsGrid}>
-        <View style={styles.metricCard}>
-          <View style={[styles.metricAccentBar, { backgroundColor: COLORS.primary }]} />
-          <Text style={styles.metricLabel}>{t('dashboard.activeMothers', 'Active Mothers')}</Text>
-          <Text style={[styles.metricValue, { color: COLORS.textPrimary }]}>
-            {stats?.activeMothers ?? 0}
-          </Text>
-          <Text style={styles.metricSub}>Total registered: {stats?.totalMothers ?? 0}</Text>
-        </View>
+      {/* 1. TOP METRIC CARDS (Decomposed Component) */}
+      <DashboardMetricsGrid stats={stats} />
 
-        <View style={styles.metricCard}>
-          <View style={[styles.metricAccentBar, { backgroundColor: COLORS.risk.red.accent }]} />
-          <Text style={[styles.metricLabel, { color: COLORS.risk.red.text }]}>
-            {t('dashboard.highRisk', 'High Risk (RED)')}
-          </Text>
-          <Text style={[styles.metricValue, { color: COLORS.risk.red.accent }]}>
-            {stats?.redRisk ?? 0}
-          </Text>
-          <Text style={[styles.metricSub, { color: COLORS.risk.red.text }]}>Weekly visit tier</Text>
-        </View>
+      {/* 2. OVERDUE / MISSED SECTION (Decomposed Component) */}
+      <OverdueAlertSection
+        tasks={overdueTasks}
+        onViewProfile={handleViewProfile}
+        onCompleteTask={handleCompleteTask}
+      />
 
-        <View style={styles.metricCard}>
-          <View style={[styles.metricAccentBar, { backgroundColor: COLORS.risk.yellow.accent }]} />
-          <Text style={[styles.metricLabel, { color: COLORS.risk.yellow.text }]}>
-            {t('dashboard.overdueAlerts', 'Overdue Alerts')}
-          </Text>
-          <Text style={[styles.metricValue, { color: COLORS.risk.yellow.accent }]}>
-            {(stats?.overdueVisits ?? 0) + (stats?.overdueVaccines ?? 0)}
-          </Text>
-          <Text style={styles.metricSub}>
-            Visits: {stats?.overdueVisits ?? 0} • Vax: {stats?.overdueVaccines ?? 0}
-          </Text>
-        </View>
-
-        <View style={styles.metricCard}>
-          <View style={[styles.metricAccentBar, { backgroundColor: '#F97316' }]} />
-          <Text style={[styles.metricLabel, { color: '#C2410C' }]}>
-            {t('dashboard.growthFaltering', 'Growth Faltering')}
-          </Text>
-          <Text style={[styles.metricValue, { color: '#EA580C' }]}>
-            {stats?.growthFalteringCount ?? 0}
-          </Text>
-          <Text style={[styles.metricSub, { color: '#9A3412' }]}>MAM / SAM tracked</Text>
-        </View>
-      </View>
-
-      {/* 2. OVERDUE / MISSED SECTION */}
-      {overdueTasks.length > 0 && (
-        <View style={styles.overdueSection}>
-          <View style={styles.overdueHeaderRow}>
-            <View style={styles.overdueBadgePill}>
-              <View style={styles.alertPulseDot} />
-              <Text style={styles.overdueBadgePillText}>
-                {overdueTasks.length} {t('dashboard.overdueAction', 'Overdue Follow-ups')}
-              </Text>
-            </View>
-            <Text style={styles.overdueSubLabel}>Action Required</Text>
-          </View>
-
-          {overdueTasks.map((ot) => (
-            <View key={ot.id} style={styles.overdueTaskCard}>
-              <View style={styles.overdueTaskTop}>
-                <View style={styles.taskTypeBadge}>
-                  <Text style={styles.taskTypeText}>{ot.task_type.replace(/_/g, ' ')}</Text>
-                </View>
-                <Text style={styles.overdueDate}>
-                  {t('dashboard.due', 'නියමිත')}: {formatDisplayDate(ot.due_date)}
-                </Text>
-              </View>
-
-              <Text style={styles.overdueTargetName}>{ot.target_name || 'Recipient'}</Text>
-              {ot.notes ? <Text style={styles.overdueNotes}>{ot.notes}</Text> : null}
-
-              <View style={styles.overdueActionsRow}>
-                {ot.target_type === 'MOTHER' ? (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.overdueActionBtn}
-                    onPress={() => router.push(`/mother/${ot.target_id}` as any)}
-                  >
-                    <Text style={styles.overdueActionBtnText}>View Profile</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.overdueActionBtn}
-                    onPress={() => router.push(`/child/${ot.target_id}` as any)}
-                  >
-                    <Text style={styles.overdueActionBtnText}>View Child</Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  style={[styles.overdueActionBtn, styles.completeBtn]}
-                  onPress={() => handleCompleteTask(ot.id, ot.target_name, ot.notes)}
-                >
-                  <Text style={styles.completeBtnText}>✓ Mark Done</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* 3. HIGH-RISK (RED-TAG) WATCHLIST */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionTitleGroup}>
-            <View style={[styles.sectionBulletDot, { backgroundColor: COLORS.risk.red.dot }]} />
-            <Text style={styles.sectionTitle}>
-              {t('dashboard.redWatchlist', 'High-Risk (RED-Tag) Watchlist')}
-            </Text>
-          </View>
-          <View style={styles.badgeSmall}>
-            <Text style={styles.badgeSmallText}>{redMothers.length}</Text>
-          </View>
-        </View>
-
-        {redMothers.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No high-risk mothers currently flagged</Text>
-          </View>
-        ) : (
-          redMothers.map((mother) => {
-            let riskFactors: string[] = [];
-            try {
-              riskFactors = JSON.parse((mother as any).preg_risk_factors || '[]');
-            } catch {
-              riskFactors = [];
-            }
-
-            return (
-              <View key={mother.id} style={styles.redWatchCard}>
-                <View style={styles.redCardTop}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.motherName}>{mother.full_name}</Text>
-                    <Text style={styles.motherInfo}>
-                      NIC: {mother.nic || 'N/A'} • {mother.gn_division || 'Unassigned'}
-                    </Text>
-                  </View>
-                  <RiskBadge level="RED" score={mother.risk_score} />
-                </View>
-
-                {/* Risk Reasons Chips */}
-                {riskFactors.length > 0 && (
-                  <View style={styles.reasonsList}>
-                    {riskFactors.map((rf, idx) => (
-                      <View key={idx} style={styles.reasonChip}>
-                        <Text style={styles.reasonText}>• {rf}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* Action Buttons: 1-Tap Call, WhatsApp, Log Visit */}
-                <View style={styles.cardActionsRow}>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={[styles.actionBtn, styles.callBtn]}
-                    onPress={() => handleCall(mother.phone)}
-                  >
-                    <Text style={styles.callBtnText}>📞 {t('dashboard.call', 'Call')}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={[styles.actionBtn, styles.whatsappBtn]}
-                    onPress={() => handleWhatsApp(mother.phone, mother.full_name)}
-                  >
-                    <Text style={styles.whatsappBtnText}>💬 {t('dashboard.whatsapp', 'WhatsApp')}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={[styles.actionBtn, styles.visitBtn]}
-                    onPress={() => {
-                      if (mother.pregnancy_id) {
-                        router.push(`/mother/visit/${mother.pregnancy_id}` as any);
-                      } else {
-                        router.push(`/mother/${mother.id}` as any);
-                      }
-                    }}
-                  >
-                    <Text style={styles.visitBtnText}>📝 {t('dashboard.logVisit', 'Log Visit')}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })
-        )}
-      </View>
+      {/* 3. HIGH-RISK (RED-TAG) WATCHLIST (Decomposed Component) */}
+      <HighRiskWatchlist
+        mothers={redMothers}
+        onCall={handleCall}
+        onWhatsApp={handleWhatsApp}
+      />
 
       {/* 4. TODAY'S SCHEDULE (Grouped by GN Division) */}
       <View style={styles.section}>
@@ -598,218 +434,121 @@ const styles = StyleSheet.create({
   },
   syncActionIcon: {
     fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.textSecondary,
   },
   syncRightActions: {
     flexDirection: 'row',
+    gap: 8,
     alignItems: 'center',
-    gap: 6,
   },
   wheelPill: {
-    backgroundColor: '#EEF2FF',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: '#C7D2FE',
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.card,
-  },
-  wheelPillText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#4338CA',
-  },
-  loginPill: {
-    backgroundColor: COLORS.surface,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: COLORS.borderHairline,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.card,
-  },
-  loginPillText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  metricCard: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    minHeight: 104,
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.surface,
-    padding: 12,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.borderHairline,
-    ...SHADOWS.card,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  metricAccentBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-  },
-  metricLabel: {
-    ...TYPOGRAPHY.overline,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-    minHeight: 28,
-  },
-  metricValue: {
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.6,
-    marginVertical: 2,
-  },
-  metricSub: {
-    fontSize: 11,
-    color: COLORS.textTertiary,
-    fontWeight: '500',
-  },
-  overdueSection: {
-    backgroundColor: COLORS.risk.red.bg,
-    borderWidth: 1,
-    borderColor: COLORS.risk.red.border,
-    borderRadius: RADIUS.lg,
-    padding: 14,
-    marginBottom: 20,
-    ...SHADOWS.card,
-  },
-  overdueHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  overdueBadgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: COLORS.risk.red.border,
-    gap: 6,
-  },
-  alertPulseDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: COLORS.risk.red.dot,
-  },
-  overdueBadgePillText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: COLORS.risk.red.text,
-  },
-  overdueSubLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.risk.red.accent,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  overdueTaskCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: COLORS.borderHairline,
-    borderLeftWidth: 3.5,
-    borderLeftColor: COLORS.risk.red.accent,
-    ...SHADOWS.card,
-  },
-  overdueTaskTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  taskTypeBadge: {
-    backgroundColor: COLORS.risk.red.bg,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: RADIUS.xs,
-  },
-  taskTypeText: {
-    color: COLORS.risk.red.text,
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  overdueDate: {
-    fontSize: 11,
-    color: COLORS.risk.red.accent,
-    fontWeight: '700',
-  },
-  overdueTargetName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  overdueNotes: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginVertical: 4,
-    lineHeight: 18,
-  },
-  overdueActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  overdueActionBtn: {
-    flex: 1,
-    backgroundColor: COLORS.surfaceSubtle,
-    paddingVertical: 8,
-    borderRadius: RADIUS.sm,
-    alignItems: 'center',
-    minHeight: 40,
-    justifyContent: 'center',
-  },
-  overdueActionBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  completeBtn: {
     backgroundColor: COLORS.primaryLight,
     borderWidth: 1,
     borderColor: COLORS.primaryBorder,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: RADIUS.full,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  completeBtnText: {
+  wheelPillText: {
     fontSize: 12,
     fontWeight: '700',
     color: COLORS.primaryDark,
   },
-  section: {
-    marginBottom: 22,
+  loginPill: {
+    backgroundColor: COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: COLORS.borderHairline,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: RADIUS.full,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  sectionHeaderRow: {
+  loginPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  todayTimetableBanner: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primaryBorder,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    ...SHADOWS.card,
+  },
+  todayTimetableBannerOverride: {
+    backgroundColor: '#FFFDF5',
+    borderColor: '#FDE68A',
+  },
+  timetableBannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  timetableIcon: {
+    fontSize: 26,
+  },
+  timetableInfo: {
+    flex: 1,
+  },
+  timetableTagRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  timetableTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  timetableModifiedBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: RADIUS.xs,
+  },
+  timetableModifiedText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  timetableTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  timetableTime: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  timetableArrowContainer: {
+    paddingLeft: 8,
+  },
+  timetableArrowText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.textTertiary,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   sectionTitleGroup: {
     flexDirection: 'row',
@@ -823,110 +562,30 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.h3,
+    color: COLORS.textPrimary,
   },
   scheduleTotalSub: {
     fontSize: 12,
     color: COLORS.textTertiary,
     fontWeight: '600',
   },
-  badgeSmall: {
-    backgroundColor: COLORS.risk.red.bg,
-    borderWidth: 1,
-    borderColor: COLORS.risk.red.border,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: RADIUS.full,
-  },
-  badgeSmallText: {
-    color: COLORS.risk.red.text,
-    fontWeight: '800',
-    fontSize: 11,
-  },
-  redWatchCard: {
+  emptyCard: {
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: 14,
-    marginBottom: 12,
+    padding: 16,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.borderHairline,
-    ...SHADOWS.card,
   },
-  redCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  motherName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.textPrimary,
-  },
-  motherInfo: {
-    fontSize: 12,
+  emptyText: {
     color: COLORS.textTertiary,
-    marginTop: 2,
-  },
-  reasonsList: {
-    backgroundColor: COLORS.risk.red.bg,
-    padding: 8,
-    borderRadius: RADIUS.sm,
-    marginBottom: 12,
-    gap: 3,
-  },
-  reasonChip: {
-    paddingVertical: 1,
-  },
-  reasonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.risk.red.text,
-  },
-  cardActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: RADIUS.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44, // Field tap target
-  },
-  callBtn: {
-    backgroundColor: COLORS.accentPhoneLight,
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-  },
-  callBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.accentPhone,
-  },
-  whatsappBtn: {
-    backgroundColor: COLORS.accentWhatsAppLight,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-  },
-  whatsappBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.accentWhatsApp,
-  },
-  visitBtn: {
-    backgroundColor: COLORS.primary,
-  },
-  visitBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.textWhite,
+    fontSize: 13,
   },
   gnGroup: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    padding: 14,
-    marginBottom: 12,
+    padding: 12,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: COLORS.borderHairline,
     ...SHADOWS.card,
@@ -935,21 +594,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
+    paddingBottom: 6,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.surfaceSubtle,
-    paddingBottom: 10,
-    marginBottom: 10,
+    borderBottomColor: COLORS.borderHairline,
   },
   gnTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   gnPin: {
     fontSize: 13,
   },
   gnTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
@@ -961,132 +620,40 @@ const styles = StyleSheet.create({
   },
   gnCountText: {
     fontSize: 11,
-    color: COLORS.textSecondary,
     fontWeight: '700',
+    color: COLORS.textSecondary,
   },
   taskCard: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.surfaceSubtle,
+    borderBottomColor: COLORS.borderHairline,
   },
   taskTargetName: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: COLORS.textPrimary,
+    marginBottom: 2,
   },
   taskDesc: {
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.textSecondary,
-    marginTop: 2,
   },
   doneBtn: {
-    backgroundColor: COLORS.primaryLight,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.xs,
+    backgroundColor: '#ECFDF5',
     borderWidth: 1,
-    borderColor: COLORS.primaryBorder,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: RADIUS.sm,
     minHeight: 44,
-    minWidth: 72,
     justifyContent: 'center',
-    alignItems: 'center',
   },
   doneBtnText: {
-    color: COLORS.primaryDark,
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  emptyCard: {
-    backgroundColor: COLORS.surface,
-    padding: 24,
-    borderRadius: RADIUS.lg,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.borderHairline,
-    ...SHADOWS.card,
-  },
-  emptyText: {
-    color: COLORS.textTertiary,
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  todayTimetableBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: RADIUS.md,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1.5,
-    borderColor: '#CCFBF1',
-    ...SHADOWS.card,
-  },
-  todayTimetableBannerOverride: {
-    borderColor: '#FDE68A',
-    backgroundColor: '#FFFDF5',
-  },
-  timetableBannerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  timetableIcon: {
-    fontSize: 26,
-    marginRight: 12,
-  },
-  timetableInfo: {
-    flex: 1,
-  },
-  timetableTagRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  timetableTag: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: COLORS.primaryDark,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  timetableModifiedBadge: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 4,
-  },
-  timetableModifiedText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#92400E',
-  },
-  timetableTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 2,
-  },
-  timetableTime: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: '#64748B',
-  },
-  timetableArrowContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timetableArrowText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#475569',
-    marginTop: -2,
+    color: '#065F46',
   },
 });

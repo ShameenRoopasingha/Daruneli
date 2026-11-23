@@ -9,7 +9,9 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { createFamily, createMother, createPregnancy } from '@/src/db';
@@ -39,6 +41,34 @@ export default function RegisterMotherScreen() {
   const [address, setAddress] = useState('');
   const [husbandName, setHusbandName] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [gpsLat, setGpsLat] = useState<number | null>(null);
+  const [gpsLng, setGpsLng] = useState<number | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handlePinGps = async () => {
+    try {
+      setIsLocating(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          t('common.error', 'Permission Denied'),
+          t('gps.gpsPermissionDenied', 'Location permission is required to pin the home GPS coordinates.')
+        );
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setGpsLat(loc.coords.latitude);
+      setGpsLng(loc.coords.longitude);
+      Alert.alert(
+        t('common.success', 'Success'),
+        t('gps.gpsPinnedSuccess', 'Home GPS coordinates pinned successfully.')
+      );
+    } catch (err: any) {
+      Alert.alert(t('common.error', 'Error'), err?.message || 'Could not retrieve GPS coordinates.');
+    } finally {
+      setIsLocating(false);
+    }
+  };
 
   // Mother Info
   const [fullName, setFullName] = useState('');
@@ -84,6 +114,8 @@ export default function RegisterMotherScreen() {
         husband_name: husbandName.trim(),
         emergency_phone: emergencyPhone.trim(),
         residency_status: 'ACTIVE',
+        gps_lat: gpsLat,
+        gps_lng: gpsLng,
       });
 
       // 2. Create Mother record
@@ -210,6 +242,30 @@ export default function RegisterMotherScreen() {
             value={address}
             onChangeText={setAddress}
           />
+        </View>
+
+        {/* GPS Location Pinning */}
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>{t('gps.pinHomeGps', 'Home GPS Pinning')}</Text>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            style={[styles.gpsPinBtn, gpsLat !== null && styles.gpsPinBtnActive]}
+            onPress={handlePinGps}
+            disabled={isLocating}
+          >
+            {isLocating ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <>
+                <Text style={styles.gpsPinIcon}>{gpsLat !== null ? '📍' : '🧭'}</Text>
+                <Text style={[styles.gpsPinText, gpsLat !== null && styles.gpsPinTextActive]}>
+                  {gpsLat !== null
+                    ? `GPS: ${gpsLat.toFixed(4)}, ${gpsLng?.toFixed(4)} • Tap to Update`
+                    : '📍 1-Tap Pin Home GPS Coordinates'}
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         <View style={styles.formGroup}>
@@ -621,6 +677,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.textPrimary,
     backgroundColor: COLORS.surfaceSubtle,
+  },
+  gpsPinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: COLORS.primaryBorder,
+    backgroundColor: COLORS.primaryLight,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: RADIUS.sm,
+  },
+  gpsPinBtnActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#CCFBF1',
+  },
+  gpsPinIcon: {
+    fontSize: 16,
+  },
+  gpsPinText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+  },
+  gpsPinTextActive: {
+    color: COLORS.primaryDeep,
   },
   gnRow: {
     flexDirection: 'row',

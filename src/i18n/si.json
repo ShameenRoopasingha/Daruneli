@@ -272,5 +272,57 @@
     "heartDisease": "හෘද රෝග",
     "diabetes": "දියවැඩියාව",
     "hypertension": "අධිරුධිර පීඩනය"
+  },
+  "security": {
+    "title": "ආරක්ෂාව සහ පෞද්ගලිකත්වය",
+    "appLock": "PIN අංක සහ ඇඟිලි සලකුණු ආරක්ෂාව",
+    "appLockDesc": "ක්ෂේත්‍ර රාජකාරි අතරතුර රෝගී තොරතුරු අනවසර පිවිසුම්වලින් ආරක්ෂා කරන්න",
+    "pinLock": "ඉලක්කම් 4 ක PIN අංකය",
+    "setPin": "PIN අංකයක් සකසන්න",
+    "changePin": "PIN අංකය වෙනස් කරන්න",
+    "pinSetSuccess": "PIN අංකය සාර්ථකව සකසන ලදි",
+    "biometricLock": "ඇඟිලි සලකුණු මගින් පිවිසීම (Biometrics)",
+    "autoLockTimeout": "ස්වයංක්‍රීයව අගුළු වැටීමේ කාලය",
+    "minutes_1": "විනාඩි 1",
+    "minutes_5": "විනාඩි 5 (නිර්දේශිත)",
+    "minutes_15": "විනාඩි 15",
+    "locked": "යෙදුම අගුළු දමා ඇත",
+    "enterPin": "ඉලක්කම් 4 ක PIN අංකය ඇතුළත් කරන්න",
+    "invalidPin": "අවලංගු PIN අංකයකි"
+  },
+  "gps": {
+    "pinHomeGps": "නිවසේ GPS පිහිටීම සටහන් කරන්න",
+    "updateGps": "GPS පිහිටීම යාවත්කාලීන කරන්න",
+    "getDirections": "මාර්ග සිතියම (Directions)",
+    "gpsPinnedSuccess": "නිවසේ GPS පිහිටීම සාර්ථකව සටහන් කරන ලදි",
+    "gpsPermissionDenied": "ස්ථානීය අවසරය (Location Permission) ප්‍රතික්ෂේප විය",
+    "gpsAccuracy": "නිරවද්‍යතාව",
+    "latitude": "අක්ෂාංශය",
+    "longitude": "දේශාංශය"
+  },
+  "transfers": {
+    "transferTitle": "ස්ථාන මාරු / තාවකාලික බැහැරවීම්",
+    "markTempOut": "තාවකාලිකව ප්‍රදේශයෙන් බැහැරව (TEMP_OUT)",
+    "markPermanentTransfer": "ස්ථිර ස්ථාන මාරුව (ප්‍රදේශයෙන් බැහැරට)",
+    "tempOut": "තාවකාලිකව බැහැරව",
+    "transferredOut": "ප්‍රදේශයෙන් මාරු වූ",
+    "expectedReturn": "නැවත පැමිණෙන බලාපොරොත්තු දිනය",
+    "destinationArea": "මාරුවන MOH / PHM ප්‍රදේශය",
+    "transferNotes": "මාරු වීමට හේතුව හා සටහන්",
+    "markReturned": "නැවත පැමිණි බව සටහන් කරන්න",
+    "markReturnedSuccess": "මව නැවත පැමිණි බව හා සක්‍රිය බව සාර්ථකව සටහන් විය",
+    "handoverSummary": "මාරු සටහන් PDF වාර්තාව සකසන්න",
+    "generatingSummary": "වාර්තාව සකසමින් පවතී...",
+    "handoverPdfSuccess": "මාරු සටහන් PDF වාර්තාව සාර්ථකව සකසා බෙදාගන්නා ලදි"
+  },
+  "voiceNote": {
+    "recordNote": "හඬ සායනික සටහනක් (Voice Note) සටහන් කරන්න",
+    "recording": "හඬ පටිගත වෙමින් පවතී...",
+    "tapToRecord": "පටිගත කිරීමට මයික්‍රෆෝනය තට්ටු කරන්න (උපරිම තත්පර 60)",
+    "tapToStop": "නැවැත්වීමට තට්ටු කරන්න",
+    "playPreview": "නැවත ශ්‍රවණය කරන්න",
+    "deleteNote": "හඬ පටය ඉවත් කරන්න",
+    "voiceNoteSaved": "හඬ සටහන සංචාරක සටහනට සාර්ථකව එක් විය",
+    "audioPermissionDenied": "හඬ පටිගත කිරීම සඳහා මයික්‍රෆෝන අවසරය අවශ්‍ය වේ"
   }
 }

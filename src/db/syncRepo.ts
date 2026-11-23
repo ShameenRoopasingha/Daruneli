@@ -3,6 +3,7 @@ import { getDatabase } from './database';
 export const SYNC_TABLES = [
   'families',
   'mothers',
+  'mother_transfers',
   'pregnancies',
   'antenatal_visits',
   'children',

@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -19,8 +20,22 @@ import {
   printH509Directly,
   type H509ReportData,
 } from '@/src/reports';
+import {
+  isLockEnabled,
+  setLockEnabled,
+  hasPinSet,
+  setPin,
+  isBiometricEnabled,
+  setBiometricEnabled,
+  getAutoLockMinutes,
+  setAutoLockMinutes,
+  canAuthenticateWithBiometrics,
+  type AutoLockDuration,
+} from '@/src/security';
+import { setAppLanguage } from '@/src/i18n';
 import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '@/src/theme/tokens';
 import { PhmWallCharts } from '@/src/components/charts';
+import { PinSetupModal } from '@/src/components';
 
 const MONTH_OPTIONS = [
   { month: 1, label: 'Jan' },
@@ -66,6 +81,33 @@ export default function AreaScreen() {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
 
+  // Security & Privacy state
+  const [appLockEnabled, setAppLockEnabled] = useState(false);
+  const [pinConfigured, setPinConfigured] = useState(false);
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [biometricsActive, setBiometricsActive] = useState(false);
+  const [autoLockMins, setAutoLockMins] = useState<AutoLockDuration>(5);
+  const [isPinModalVisible, setIsPinModalVisible] = useState(false);
+
+  const loadSecuritySettings = useCallback(async () => {
+    try {
+      const [locked, hasPin, bioAvail, bioEnabled, timeout] = await Promise.all([
+        isLockEnabled(),
+        hasPinSet(),
+        canAuthenticateWithBiometrics(),
+        isBiometricEnabled(),
+        getAutoLockMinutes(),
+      ]);
+      setAppLockEnabled(locked);
+      setPinConfigured(hasPin);
+      setBiometricsAvailable(bioAvail);
+      setBiometricsActive(bioEnabled);
+      setAutoLockMins(timeout);
+    } catch (e) {
+      console.error('Error loading security settings:', e);
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       const [s, h509] = await Promise.all([
@@ -74,10 +116,11 @@ export default function AreaScreen() {
       ]);
       setStats(s);
       setH509Data(h509);
+      await loadSecuritySettings();
     } catch (e) {
       console.error('Error loading area report data:', e);
     }
-  }, [selectedYear, selectedMonth]);
+  }, [selectedYear, selectedMonth, loadSecuritySettings]);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,11 +138,6 @@ export default function AreaScreen() {
     setRefreshing(true);
     await Promise.all([loadData(), autoSync.refreshStatus()]);
     setRefreshing(false);
-  };
-
-  const toggleLanguage = () => {
-    const nextLang = i18n.language === 'si' ? 'en' : 'si';
-    i18n.changeLanguage(nextLang);
   };
 
   const handleManualSync = async () => {
@@ -140,6 +178,38 @@ export default function AreaScreen() {
       Alert.alert('Print Failed', err?.message || 'Could not print report');
     } finally {
       setIsPrinting(false);
+    }
+  };
+
+  const handleToggleLock = async (enabled: boolean) => {
+    if (enabled && !pinConfigured) {
+      setIsPinModalVisible(true);
+      return;
+    }
+    await setLockEnabled(enabled);
+    setAppLockEnabled(enabled);
+  };
+
+  const handleToggleBiometric = async (enabled: boolean) => {
+    await setBiometricEnabled(enabled);
+    setBiometricsActive(enabled);
+  };
+
+  const handleChangeTimeout = async (mins: AutoLockDuration) => {
+    await setAutoLockMinutes(mins);
+    setAutoLockMins(mins);
+  };
+
+  const handlePinSuccess = async (newPin: string) => {
+    try {
+      await setPin(newPin);
+      await setLockEnabled(true);
+      setPinConfigured(true);
+      setAppLockEnabled(true);
+      setIsPinModalVisible(false);
+      Alert.alert('PIN Updated', t('security.pinSetSuccess', 'PIN set successfully'));
+    } catch {
+      Alert.alert('Error', 'Failed to save PIN');
     }
   };
 
@@ -197,15 +267,24 @@ export default function AreaScreen() {
           <Text style={styles.phmAreaText}>Kottawa North • PHM/MAH/01</Text>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={styles.langToggleBtn}
-          onPress={toggleLanguage}
-        >
-          <Text style={styles.langToggleText}>
-            🌐 {i18n.language === 'si' ? 'English' : 'සිංහල'}
-          </Text>
-        </TouchableOpacity>
+        {/* 3-Way Language Selector */}
+        <View style={styles.langSelectorRow}>
+          {(['si', 'ta', 'en'] as const).map((lang) => {
+            const isActive = i18n.language === lang;
+            return (
+              <TouchableOpacity
+                key={lang}
+                activeOpacity={0.8}
+                style={[styles.langChip, isActive && styles.langChipActive]}
+                onPress={() => setAppLanguage(lang)}
+              >
+                <Text style={[styles.langChipText, isActive && styles.langChipTextActive]}>
+                  {lang === 'si' ? 'සිංහල' : lang === 'ta' ? 'தமிழ்' : 'English'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </View>
 
       {/* 2. CLOUD SYNC & DATA PERSISTENCE CARD */}
@@ -537,7 +616,130 @@ export default function AreaScreen() {
         </View>
       </View>
 
-      {/* 6. RESET DEMO DATA ACTION */}
+      {/* 6. SECURITY & PRIVACY CARD */}
+      <View style={styles.securityCard}>
+        <View style={styles.securityHeader}>
+          <View style={styles.securityIconCircle}>
+            <Text style={styles.securityCardIcon}>🔒</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.securityCardTitle}>
+              {t('security.title', 'Security & Privacy')}
+            </Text>
+            <Text style={styles.securityCardSub}>
+              {t('security.appLockDesc', 'Protect sensitive health records when leaving device unattended')}
+            </Text>
+          </View>
+        </View>
+
+        {/* Master App Lock Toggle */}
+        <View style={styles.securityRow}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text style={styles.securityRowLabel}>
+              {t('security.appLock', 'App PIN & Biometric Lock')}
+            </Text>
+            <Text style={styles.securityRowSub}>
+              {pinConfigured
+                ? t('security.pinLock', '4-Digit PIN configured')
+                : 'PIN not configured (tap to set)'}
+            </Text>
+          </View>
+          <Switch
+            value={appLockEnabled}
+            onValueChange={handleToggleLock}
+            trackColor={{ false: '#D1D5DB', true: COLORS.primaryLight }}
+            thumbColor={appLockEnabled ? COLORS.primary : '#9CA3AF'}
+          />
+        </View>
+
+        {appLockEnabled && (
+          <View style={styles.securityDetailsSection}>
+            {/* PIN Action */}
+            <View style={styles.securitySubRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.securitySubLabel}>
+                  {pinConfigured
+                    ? t('security.changePin', 'Change 4-Digit PIN')
+                    : t('security.setPin', 'Set 4-Digit PIN')}
+                </Text>
+                <Text style={styles.securitySubDesc}>
+                  {pinConfigured ? '••••' : 'No PIN configured'}
+                </Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.changePinBtn}
+                onPress={() => setIsPinModalVisible(true)}
+              >
+                <Text style={styles.changePinBtnText}>
+                  {pinConfigured
+                    ? t('security.changePin', 'Change PIN')
+                    : t('security.setPin', 'Set PIN')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Biometric Toggle */}
+            <View style={styles.securitySubRow}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text style={styles.securitySubLabel}>
+                  {t('security.biometricLock', 'Biometric Unlock')}
+                </Text>
+                <Text style={styles.securitySubDesc}>
+                  {biometricsAvailable
+                    ? 'Fingerprint / Face ID enrolled'
+                    : 'Not supported on this device'}
+                </Text>
+              </View>
+              <Switch
+                value={biometricsActive}
+                disabled={!biometricsAvailable}
+                onValueChange={handleToggleBiometric}
+                trackColor={{ false: '#D1D5DB', true: COLORS.primaryLight }}
+                thumbColor={biometricsActive ? COLORS.primary : '#9CA3AF'}
+              />
+            </View>
+
+            {/* Auto Lock Timeout Chips */}
+            <View style={{ marginTop: 12 }}>
+              <Text style={styles.securitySubLabel}>
+                {t('security.autoLockTimeout', 'Auto-Lock Timeout')}
+              </Text>
+              <View style={styles.timeoutChipsRow}>
+                {([1, 5, 15] as const).map((mins) => {
+                  const isSelected = autoLockMins === mins;
+                  return (
+                    <TouchableOpacity
+                      key={mins}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.timeoutChip,
+                        isSelected && styles.timeoutChipActive,
+                      ]}
+                      onPress={() => handleChangeTimeout(mins)}
+                    >
+                      <Text
+                        style={[
+                          styles.timeoutChipText,
+                          isSelected && styles.timeoutChipTextActive,
+                        ]}
+                      >
+                        {mins === 1
+                          ? t('security.minutes_1', '1 min')
+                          : mins === 5
+                          ? t('security.minutes_5', '5 min')
+                          : t('security.minutes_15', '15 min')}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* 7. RESET DEMO DATA ACTION */}
       <TouchableOpacity
         activeOpacity={0.8}
         disabled={isResetting}
@@ -548,6 +750,13 @@ export default function AreaScreen() {
           {isResetting ? 'Resetting dataset...' : `🔄 ${t('area.resetDemo', 'Reset Demo Dataset')}`}
         </Text>
       </TouchableOpacity>
+
+      {/* PIN Setup Modal */}
+      <PinSetupModal
+        visible={isPinModalVisible}
+        onClose={() => setIsPinModalVisible(false)}
+        onSuccess={handlePinSuccess}
+      />
     </ScrollView>
   );
 }
@@ -587,19 +796,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
-  langToggleBtn: {
+  langSelectorRow: {
+    flexDirection: 'row',
     backgroundColor: COLORS.surface,
-    paddingVertical: 7,
-    paddingHorizontal: 14,
     borderRadius: RADIUS.full,
+    padding: 2,
     borderWidth: 1,
     borderColor: COLORS.borderHairline,
     ...SHADOWS.card,
   },
-  langToggleText: {
-    color: COLORS.primaryDark,
-    fontWeight: '700',
+  langChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.full,
+  },
+  langChipActive: {
+    backgroundColor: COLORS.primary,
+  },
+  langChipText: {
     fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  langChipTextActive: {
+    color: COLORS.textWhite,
+    fontWeight: '700',
   },
   syncCard: {
     backgroundColor: COLORS.surface,
@@ -955,6 +1176,122 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     opacity: 0.6,
+  },
+  securityCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.borderHairline,
+    ...SHADOWS.card,
+  },
+  securityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  securityIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.surfaceSubtle,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  securityCardIcon: {
+    fontSize: 18,
+  },
+  securityCardTitle: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.textPrimary,
+  },
+  securityCardSub: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+    marginTop: 2,
+  },
+  securityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderHairline,
+  },
+  securityRowLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  securityRowSub: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  securityDetailsSection: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderHairline,
+    gap: 12,
+  },
+  securitySubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  securitySubLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  securitySubDesc: {
+    fontSize: 11,
+    color: COLORS.textTertiary,
+    marginTop: 2,
+  },
+  changePinBtn: {
+    backgroundColor: COLORS.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: COLORS.borderSubtle,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: RADIUS.sm,
+  },
+  changePinBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  timeoutChipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  timeoutChip: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    backgroundColor: COLORS.surfaceSubtle,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderHairline,
+    alignItems: 'center',
+  },
+  timeoutChipActive: {
+    backgroundColor: COLORS.primaryLight,
+    borderColor: COLORS.primary,
+  },
+  timeoutChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  timeoutChipTextActive: {
+    color: COLORS.primaryDark,
+    fontWeight: '700',
   },
   resetBtn: {
     backgroundColor: COLORS.surface,
