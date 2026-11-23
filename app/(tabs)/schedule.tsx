@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { COLORS, SHADOWS, RADIUS } from '@/src/theme';
+import { COLORS, SHADOWS } from '@/src/theme';
 import {
   getScheduleTemplates,
   getOverridesForRange,
@@ -757,71 +757,126 @@ function renderActionCard(
       {/* Reason subtitle */}
       <Text style={styles.reasonText}>{item.reason}</Text>
 
-      {/* Action Buttons Row */}
-      <View style={styles.actionBtnRow}>
-        {/* Profile Button */}
-        <TouchableOpacity
-          style={styles.actionBtnSecondary}
-          onPress={() => {
-            if (isMother) {
-              router.push(`/mother/${profileId}`);
-            } else {
-              router.push(`/child/${profileId}`);
-            }
-          }}
-        >
-          <Text style={styles.actionBtnSecondaryText}>
-            👤 {isSi ? 'ප්‍රොෆයිලය' : 'Profile'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Visit / Record Button */}
-        <TouchableOpacity
-          style={styles.actionBtnPrimary}
-          onPress={() => {
-            if (isMother) {
-              if (item.pregnancyId) {
-                router.push(`/mother/visit/${item.pregnancyId}` as any);
+      {/* 2x2 Action Button Grid */}
+      <View style={styles.actionGrid}>
+        {/* Row 1: Primary Clinical Action + Profile Navigation */}
+        <View style={styles.actionGridRow}>
+          {/* Primary Action Button */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            style={styles.actionBtnPrimary}
+            onPress={() => {
+              if (isMother) {
+                if (item.pregnancyId) {
+                  router.push(`/mother/visit/${item.pregnancyId}` as any);
+                } else {
+                  router.push(`/mother/${profileId}` as any);
+                }
               } else {
-                router.push(`/mother/${profileId}` as any);
+                router.push(`/child/log-growth/${profileId}` as any);
               }
-            } else {
-              router.push(`/child/log-growth/${profileId}` as any);
-            }
-          }}
-        >
-          <Text style={styles.actionBtnPrimaryText}>
-            📝 {isMother ? (isSi ? 'සංචාරය' : 'Log Visit') : (isSi ? 'වර්ධනය / එන්නත්' : 'Growth/EPI')}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Call Button */}
-        {item.phone && (
-          <TouchableOpacity
-            style={styles.actionBtnCall}
-            onPress={() => handleCall(item.phone)}
+            }}
           >
-            <Text style={styles.actionBtnCallText}>📞</Text>
+            <Text style={styles.actionBtnPrimaryText} numberOfLines={1}>
+              📝 {isMother ? (isSi ? 'සංචාරය සටහන්' : 'Log Visit') : (isSi ? 'වර්ධනය / එන්නත්' : 'Growth / EPI')}
+            </Text>
           </TouchableOpacity>
-        )}
 
-        {/* Reschedule Button (+7 Days for Tasks) */}
-        {item.taskId && (
+          {/* Profile Navigation Button */}
           <TouchableOpacity
-            style={styles.actionBtnReschedule}
-            onPress={() => handleReschedule(item.taskId!, item.name)}
+            activeOpacity={0.75}
+            style={styles.actionBtnSecondary}
+            onPress={() => {
+              if (isMother) {
+                router.push(`/mother/${profileId}`);
+              } else {
+                router.push(`/child/${profileId}`);
+              }
+            }}
           >
-            <Text style={styles.actionBtnRescheduleText}>+7d</Text>
+            <Text style={styles.actionBtnSecondaryText} numberOfLines={1}>
+              👤 {isSi ? 'ප්‍රොෆයිලය' : 'Profile'}
+            </Text>
           </TouchableOpacity>
-        )}
+        </View>
 
-        {/* Manual Date Reschedule Button */}
-        <TouchableOpacity
-          style={styles.actionBtnMoveDate}
-          onPress={() => handleOpenManualReschedule(item)}
-        >
-          <Text style={styles.actionBtnMoveDateText}>📅</Text>
-        </TouchableOpacity>
+        {/* Row 2: Communication & Scheduling Actions */}
+        <View style={styles.actionGridRow}>
+          {/* Col 1: Call Button (or Postpone 7d if no phone) */}
+          {item.phone ? (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.actionBtnCall}
+              onPress={() => handleCall(item.phone)}
+            >
+              <Text style={styles.actionBtnCallText} numberOfLines={1}>
+                📞 {isSi ? 'අමතන්න' : 'Call'}
+              </Text>
+            </TouchableOpacity>
+          ) : item.taskId ? (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.actionBtnReschedule}
+              onPress={() => handleReschedule(item.taskId!, item.name)}
+            >
+              <Text style={styles.actionBtnRescheduleText} numberOfLines={1}>
+                ⏩ {isSi ? '+7d කල් දමන්න' : '+7d Postpone'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.actionBtnMoveDate}
+              onPress={() => handleOpenManualReschedule(item)}
+            >
+              <Text style={styles.actionBtnMoveDateText} numberOfLines={1}>
+                📅 {isSi ? 'දිනය වෙනස් කරන්න' : 'Reschedule Visit'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Col 2: Rescheduling (Split if both phone and +7d task are present) */}
+          {item.phone && item.taskId ? (
+            <View style={styles.rescheduleSplitGroup}>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.actionBtnRescheduleMini}
+                onPress={() => handleReschedule(item.taskId!, item.name)}
+              >
+                <Text style={styles.actionBtnRescheduleMiniText}>+7d</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.actionBtnMoveDateMini}
+                onPress={() => handleOpenManualReschedule(item)}
+              >
+                <Text style={styles.actionBtnMoveDateMiniText} numberOfLines={1}>
+                  📅 {isSi ? 'දිනය' : 'Date'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : item.phone ? (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.actionBtnMoveDate}
+              onPress={() => handleOpenManualReschedule(item)}
+            >
+              <Text style={styles.actionBtnMoveDateText} numberOfLines={1}>
+                📅 {isSi ? 'දිනය වෙනස්' : 'Reschedule'}
+              </Text>
+            </TouchableOpacity>
+          ) : item.taskId ? (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              style={styles.actionBtnMoveDate}
+              onPress={() => handleOpenManualReschedule(item)}
+            >
+              <Text style={styles.actionBtnMoveDateText} numberOfLines={1}>
+                📅 {isSi ? 'වෙනත් දිනයක්' : 'Pick Date'}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -1269,66 +1324,130 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 12,
   },
-  actionBtnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  actionGrid: {
     gap: 8,
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
-  actionBtnSecondary: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
+  actionGridRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+  },
+  actionBtnSecondary: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnSecondaryText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#334155',
   },
   actionBtnPrimary: {
     flex: 1,
+    height: 44,
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnPrimaryText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '800',
     color: '#FFFFFF',
   },
   actionBtnCall: {
-    width: 44,
+    flex: 1,
     height: 44,
-    borderRadius: RADIUS.sm,
+    borderRadius: 10,
     backgroundColor: '#DCFCE7',
     borderWidth: 1,
     borderColor: '#86EFAC',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 8,
   },
   actionBtnCallText: {
-    fontSize: 16,
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#15803D',
   },
   actionBtnReschedule: {
+    flex: 1,
+    height: 44,
     backgroundColor: '#FFFBEB',
     borderWidth: 1,
     borderColor: '#FDE68A',
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    minHeight: 44,
+    paddingHorizontal: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   actionBtnRescheduleText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '800',
     color: '#B45309',
+  },
+  rescheduleSplitGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  actionBtnRescheduleMini: {
+    flex: 0.9,
+    height: 44,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionBtnRescheduleMiniText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  actionBtnMoveDateMini: {
+    flex: 1.1,
+    height: 44,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  actionBtnMoveDateMiniText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  actionBtnMoveDate: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  actionBtnMoveDateText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
   },
   summaryCard: {
     backgroundColor: '#FFFFFF',
@@ -1436,18 +1555,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '800',
-  },
-  actionBtnMoveDate: {
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionBtnMoveDateText: {
-    fontSize: 16,
   },
 });
