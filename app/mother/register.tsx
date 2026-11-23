@@ -320,43 +320,63 @@ export default function RegisterMotherScreen() {
         />
 
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Fertility Treatment Pregnancy?</Text>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Text style={styles.toggleLabel}>
+              {t('mother.fertilityTreatment', 'Fertility Treatment History')}?
+            </Text>
+          </View>
           <TouchableOpacity
             activeOpacity={0.7}
             style={[styles.toggleBtn, isFertilityTreatment && styles.toggleBtnActive]}
             onPress={() => setIsFertilityTreatment(!isFertilityTreatment)}
           >
             <Text style={[styles.toggleBtnText, isFertilityTreatment && styles.toggleTextActive]}>
-              {isFertilityTreatment ? 'YES (High Risk)' : 'NO'}
+              {isFertilityTreatment ? 'ඔව් (High Risk)' : 'නැත (NO)'}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Pre-Conception Planning?</Text>
+          <View style={{ flex: 1, marginRight: 10 }}>
+            <Text style={styles.toggleLabel}>
+              {t('mother.planningPregnancy', 'Pre-Conception Planning')}?
+            </Text>
+          </View>
           <TouchableOpacity
             activeOpacity={0.7}
             style={[styles.toggleBtn, isPlanningPregnancy && styles.toggleBtnActiveTeal]}
             onPress={() => setIsPlanningPregnancy(!isPlanningPregnancy)}
           >
             <Text style={[styles.toggleBtnText, isPlanningPregnancy && styles.toggleTextActive]}>
-              {isPlanningPregnancy ? 'YES' : 'NO'}
+              {isPlanningPregnancy ? 'ඔව් (YES)' : 'නැත (NO)'}
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Steppers for Obstetric History */}
-        <View style={styles.stepperContainer}>
-          <View style={styles.stepperItem}>
-            <Text style={styles.stepperLabel}>PREV MISCARRIAGES</Text>
+        <View style={styles.stepperSection}>
+          <Text style={styles.stepperSectionTitle}>
+            {t('mother.obstetricHistory', 'ප්‍රසව ඉතිහාසය (Obstetric History)')}
+          </Text>
+
+          {/* Previous Miscarriages */}
+          <View style={styles.stepperRow}>
+            <View style={styles.stepperRowLabelGroup}>
+              <Text style={styles.stepperRowLabelSi}>
+                {t('mother.prevMiscarriages', 'පෙර ගබ්සාවීම්')}
+              </Text>
+              <Text style={styles.stepperRowLabelEn}>Previous Miscarriages</Text>
+            </View>
             <View style={styles.stepperControls}>
               <TouchableOpacity
                 activeOpacity={0.7}
-                style={styles.stepBtn}
+                style={[styles.stepBtn, prevMiscarriages === 0 && styles.stepBtnDisabled]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 onPress={() => setPrevMiscarriages(Math.max(0, prevMiscarriages - 1))}
+                disabled={prevMiscarriages === 0}
+                accessibilityLabel="Decrease previous miscarriages"
               >
-                <Text style={styles.stepBtnText}>-</Text>
+                <Text style={[styles.stepBtnText, prevMiscarriages === 0 && styles.stepBtnTextDisabled]}>-</Text>
               </TouchableOpacity>
               <Text style={styles.stepVal}>{prevMiscarriages}</Text>
               <TouchableOpacity
@@ -364,22 +384,31 @@ export default function RegisterMotherScreen() {
                 style={styles.stepBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 onPress={() => setPrevMiscarriages(prevMiscarriages + 1)}
+                accessibilityLabel="Increase previous miscarriages"
               >
                 <Text style={styles.stepBtnText}>+</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.stepperItem}>
-            <Text style={styles.stepperLabel}>PREV STILLBIRTHS</Text>
+          {/* Previous Stillbirths */}
+          <View style={styles.stepperRow}>
+            <View style={styles.stepperRowLabelGroup}>
+              <Text style={styles.stepperRowLabelSi}>
+                {t('mother.prevStillbirths', 'පෙර මළදරු උපත්')}
+              </Text>
+              <Text style={styles.stepperRowLabelEn}>Previous Stillbirths</Text>
+            </View>
             <View style={styles.stepperControls}>
               <TouchableOpacity
                 activeOpacity={0.7}
-                style={styles.stepBtn}
+                style={[styles.stepBtn, prevStillbirths === 0 && styles.stepBtnDisabled]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 onPress={() => setPrevStillbirths(Math.max(0, prevStillbirths - 1))}
+                disabled={prevStillbirths === 0}
+                accessibilityLabel="Decrease previous stillbirths"
               >
-                <Text style={styles.stepBtnText}>-</Text>
+                <Text style={[styles.stepBtnText, prevStillbirths === 0 && styles.stepBtnTextDisabled]}>-</Text>
               </TouchableOpacity>
               <Text style={styles.stepVal}>{prevStillbirths}</Text>
               <TouchableOpacity
@@ -387,22 +416,31 @@ export default function RegisterMotherScreen() {
                 style={styles.stepBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 onPress={() => setPrevStillbirths(prevStillbirths + 1)}
+                accessibilityLabel="Increase previous stillbirths"
               >
                 <Text style={styles.stepBtnText}>+</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.stepperItem}>
-            <Text style={styles.stepperLabel}>PREV C-SECTIONS</Text>
+          {/* Previous C-Sections */}
+          <View style={styles.stepperRow}>
+            <View style={styles.stepperRowLabelGroup}>
+              <Text style={styles.stepperRowLabelSi}>
+                {t('mother.prevCSections', 'පෙර සිසේරියන් සැත්කම්')}
+              </Text>
+              <Text style={styles.stepperRowLabelEn}>Previous C-Sections</Text>
+            </View>
             <View style={styles.stepperControls}>
               <TouchableOpacity
                 activeOpacity={0.7}
-                style={styles.stepBtn}
+                style={[styles.stepBtn, prevCSections === 0 && styles.stepBtnDisabled]}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 onPress={() => setPrevCSections(Math.max(0, prevCSections - 1))}
+                disabled={prevCSections === 0}
+                accessibilityLabel="Decrease previous c-sections"
               >
-                <Text style={styles.stepBtnText}>-</Text>
+                <Text style={[styles.stepBtnText, prevCSections === 0 && styles.stepBtnTextDisabled]}>-</Text>
               </TouchableOpacity>
               <Text style={styles.stepVal}>{prevCSections}</Text>
               <TouchableOpacity
@@ -410,6 +448,7 @@ export default function RegisterMotherScreen() {
                 style={styles.stepBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 onPress={() => setPrevCSections(prevCSections + 1)}
+                accessibilityLabel="Increase previous c-sections"
               >
                 <Text style={styles.stepBtnText}>+</Text>
               </TouchableOpacity>
@@ -423,7 +462,9 @@ export default function RegisterMotherScreen() {
         <View style={styles.pregToggleHeader}>
           <View style={styles.cardHeaderGroup}>
             <View style={[styles.bulletDot, { backgroundColor: COLORS.primary }]} />
-            <Text style={styles.sectionTitle}>Current Pregnancy Record</Text>
+            <Text style={styles.sectionTitle}>
+              {t('mother.activePregnancy', 'Current Pregnancy Record')}
+            </Text>
           </View>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -439,7 +480,9 @@ export default function RegisterMotherScreen() {
         {isPregnant && (
           <View style={{ marginTop: 10 }}>
             <View style={styles.formGroup}>
-              <Text style={styles.label}>LRMP Date (Last Menstrual Period) *</Text>
+              <Text style={styles.label}>
+                {t('mother.lrmpDate', 'LRMP Date (Last Menstrual Period)')} *
+              </Text>
               <TextInput
                 style={styles.input}
                 placeholder="YYYY-MM-DD"
@@ -450,42 +493,58 @@ export default function RegisterMotherScreen() {
             </View>
 
             <View style={styles.gravidaRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Gravida (Total)</Text>
+              <View style={styles.gravidaCard}>
+                <View style={styles.gravidaLabelGroup}>
+                  <Text style={styles.gravidaLabelSi}>ගැබ් වාර (Gravida)</Text>
+                  <Text style={styles.gravidaLabelEn}>Total Pregnancies</Text>
+                </View>
                 <View style={styles.stepperControls}>
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    style={styles.stepBtn}
+                    style={[styles.stepBtn, gravida <= 1 && styles.stepBtnDisabled]}
                     onPress={() => setGravida(Math.max(1, gravida - 1))}
+                    disabled={gravida <= 1}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityLabel="Decrease gravida"
                   >
-                    <Text style={styles.stepBtnText}>-</Text>
+                    <Text style={[styles.stepBtnText, gravida <= 1 && styles.stepBtnTextDisabled]}>-</Text>
                   </TouchableOpacity>
                   <Text style={styles.stepVal}>{gravida}</Text>
                   <TouchableOpacity
                     activeOpacity={0.7}
                     style={styles.stepBtn}
                     onPress={() => setGravida(gravida + 1)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityLabel="Increase gravida"
                   >
                     <Text style={styles.stepBtnText}>+</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Para (Past Births)</Text>
+              <View style={styles.gravidaCard}>
+                <View style={styles.gravidaLabelGroup}>
+                  <Text style={styles.gravidaLabelSi}>පසුගිය උපත් (Para)</Text>
+                  <Text style={styles.gravidaLabelEn}>Past Births</Text>
+                </View>
                 <View style={styles.stepperControls}>
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    style={styles.stepBtn}
+                    style={[styles.stepBtn, para <= 0 && styles.stepBtnDisabled]}
                     onPress={() => setPara(Math.max(0, para - 1))}
+                    disabled={para <= 0}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityLabel="Decrease para"
                   >
-                    <Text style={styles.stepBtnText}>-</Text>
+                    <Text style={[styles.stepBtnText, para <= 0 && styles.stepBtnTextDisabled]}>-</Text>
                   </TouchableOpacity>
                   <Text style={styles.stepVal}>{para}</Text>
                   <TouchableOpacity
                     activeOpacity={0.7}
                     style={styles.stepBtn}
                     onPress={() => setPara(para + 1)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityLabel="Increase para"
                   >
                     <Text style={styles.stepBtnText}>+</Text>
                   </TouchableOpacity>
@@ -519,7 +578,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
-    paddingBottom: 40,
+    paddingBottom: 64,
   },
   sectionCard: {
     backgroundColor: COLORS.surface,
@@ -654,24 +713,41 @@ const styles = StyleSheet.create({
   toggleTextActive: {
     color: COLORS.textWhite,
   },
-  stepperContainer: {
+  stepperSection: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderHairline,
+  },
+  stepperSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  stepperRow: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-  },
-  stepperItem: {
-    flex: 1,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.surfaceSubtle,
-    padding: 10,
-    borderRadius: RADIUS.sm,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.surfaceSubtle,
   },
-  stepperLabel: {
-    ...TYPOGRAPHY.overline,
-    fontSize: 9,
+  stepperRowLabelGroup: {
+    flex: 1,
+    marginRight: 12,
+  },
+  stepperRowLabelSi: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  stepperRowLabelEn: {
+    fontSize: 11,
     color: COLORS.textTertiary,
-    marginBottom: 6,
-    textAlign: 'center',
+    marginTop: 2,
   },
   stepperControls: {
     flexDirection: 'row',
@@ -688,16 +764,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  stepBtnDisabled: {
+    backgroundColor: COLORS.surfaceSubtle,
+    borderColor: COLORS.borderHairline,
+    opacity: 0.45,
+  },
   stepBtnText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: COLORS.textPrimary,
   },
+  stepBtnTextDisabled: {
+    color: COLORS.textTertiary,
+  },
   stepVal: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: COLORS.textPrimary,
-    minWidth: 20,
+    minWidth: 24,
     textAlign: 'center',
   },
   pregToggleHeader: {
@@ -708,6 +792,29 @@ const styles = StyleSheet.create({
   gravidaRow: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 8,
+  },
+  gravidaCard: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceSubtle,
+    borderRadius: RADIUS.md,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gravidaLabelGroup: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  gravidaLabelSi: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  gravidaLabelEn: {
+    fontSize: 10,
+    color: COLORS.textTertiary,
+    marginTop: 1,
   },
   submitBtn: {
     backgroundColor: COLORS.primary,
