@@ -1,0 +1,30 @@
+{
+  "name": "Daruneli — Mother Companion",
+  "short_name": "Daruneli",
+  "description": "Daruneli Maternal & Child Health System — Official Mother Companion Portal (FHB Sri Lanka)",
+  "start_url": "/mother-portal",
+  "scope": "/mother-portal",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4FAF8",
+  "theme_color": "#0F8B8D",
+  "icons": [
+    {
+      "src": "/images/daruneli-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/daruneli-emblem.png",
+      "sizes": "645x645",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/images/favicon.png",
+      "sizes": "48x48",
+      "type": "image/png"
+    }
+  ]
+}

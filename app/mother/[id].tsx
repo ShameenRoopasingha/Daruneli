@@ -30,6 +30,7 @@ import {
   GestationalWheelTool,
 } from '@/src/components/charts';
 import { TransferMotherModal } from '@/src/components/TransferMotherModal';
+import { MotherInviteModal } from '@/src/components/mother/MotherInviteModal';
 import {
   MotherProfileHeader,
   MotherOverviewTab,
@@ -55,6 +56,7 @@ export default function MotherProfileScreen() {
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showWheelModal, setShowWheelModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!id) return;
@@ -133,6 +135,7 @@ export default function MotherProfileScreen() {
         mother={mother}
         onRefresh={loadData}
         onOpenTransferModal={() => setShowTransferModal(true)}
+        onOpenPortalModal={() => setShowInviteModal(true)}
       />
 
       {/* 2. SUB-NAV TABS */}
@@ -263,6 +266,18 @@ export default function MotherProfileScreen() {
           loadData();
         }}
       />
+
+      {/* MOTHER PORTAL ONBOARDING / INVITE MODAL */}
+      {mother && (
+        <MotherInviteModal
+          visible={showInviteModal}
+          motherId={mother.id}
+          motherName={mother.full_name}
+          motherPhone={mother.phone}
+          phmAreaId={mother.phm_area_id}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
     </ScrollView>
   );
 }

@@ -18,6 +18,7 @@ interface MotherProfileHeaderProps {
   mother: MotherWithPregnancy;
   onRefresh: () => void;
   onOpenTransferModal: () => void;
+  onOpenPortalModal?: () => void;
 }
 
 function getAge(dob?: string | null): number | null {
@@ -46,6 +47,7 @@ export const MotherProfileHeader: React.FC<MotherProfileHeaderProps> = ({
   mother,
   onRefresh,
   onOpenTransferModal,
+  onOpenPortalModal,
 }) => {
   const { t } = useTranslation();
   const [isLocating, setIsLocating] = useState(false);
@@ -268,6 +270,16 @@ export const MotherProfileHeader: React.FC<MotherProfileHeaderProps> = ({
         >
           <Text style={styles.transferActionBtnText}>🔄 Relocate / Transfer</Text>
         </TouchableOpacity>
+
+        {onOpenPortalModal && (
+          <TouchableOpacity
+            activeOpacity={0.75}
+            style={styles.portalActionBtn}
+            onPress={onOpenPortalModal}
+          >
+            <Text style={styles.portalActionBtnText}>📱 Mother Portal Access</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -503,5 +515,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#475569',
+  },
+  portalActionBtn: {
+    backgroundColor: '#FAF5FF',
+    borderColor: '#D8B4FE',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: RADIUS.sm,
+    justifyContent: 'center',
+  },
+  portalActionBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#7E22CE',
   },
 });

@@ -100,6 +100,11 @@ export async function ensurePhase2Columns(database: SQLite.SQLiteDatabase): Prom
             await database.execAsync('ALTER TABLE child_growth_records ADD COLUMN head_circumference_cm REAL;');
           }
         }
+        if (table === 'fetal_kick_logs') {
+          if (!colNames.has('source')) {
+            await database.execAsync("ALTER TABLE fetal_kick_logs ADD COLUMN source TEXT DEFAULT 'PHM_APP';");
+          }
+        }
 
         // Safe creation of sync dirty index now that column is guaranteed to exist
         await database.execAsync(

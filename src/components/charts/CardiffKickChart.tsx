@@ -369,6 +369,27 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
       {/* Legend & Stats */}
       {displayLogs.length > 0 && renderLegend()}
 
+      {selectedLog && (
+        <View style={styles.selectedPointCard}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <Text style={styles.selectedPointTitle}>📍 තෝරාගත් දින සටහන (Selected Record)</Text>
+            {(selectedLog.source === 'MOTHER_PORTAL' || (selectedLog as any).source === 'MOTHER_PORTAL') && (
+              <View style={styles.motherLoggedPill}>
+                <Text style={styles.motherLoggedPillText}>📱 Self-Logged by Mother</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.selectedPointDetails}>
+            දිනය: <Text style={{ fontWeight: '700' }}>{formatDMY(selectedLog.logDate || selectedLog.log_date || '')}</Text> • 
+            ආරම්භය: <Text style={{ fontWeight: '700' }}>{selectedLog.startTime || selectedLog.start_time || '-'}</Text> • 
+            10 වන චලනය: <Text style={{ fontWeight: '700' }}>{selectedLog.tenthKickTime || selectedLog.tenth_kick_time || '-'}</Text> • 
+            ගත වූ කාලය: <Text style={{ fontWeight: '800', color: (selectedLog.durationMinutes || selectedLog.duration_minutes || 0) > 720 ? '#EF4444' : '#10B981' }}>
+              {Math.round(((selectedLog.durationMinutes || selectedLog.duration_minutes || 0) / 60) * 10) / 10} පැය
+            </Text>
+          </Text>
+        </View>
+      )}
+
       {/* Log Modal */}
       <Modal visible={isLogModalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -466,7 +487,14 @@ export const CardiffKickChart: React.FC<CardiffKickChartProps> = ({
           extraContent={
             selectedLog && (
               <View style={styles.selectedPointCard}>
-                <Text style={styles.selectedPointTitle}>📍 තෝරාගත් දින සටහන (Selected Record)</Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <Text style={styles.selectedPointTitle}>📍 තෝරාගත් දින සටහන (Selected Record)</Text>
+                  {(selectedLog.source === 'MOTHER_PORTAL' || (selectedLog as any).source === 'MOTHER_PORTAL') && (
+                    <View style={styles.motherLoggedPill}>
+                      <Text style={styles.motherLoggedPillText}>📱 Self-Logged by Mother</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.selectedPointDetails}>
                   දිනය: <Text style={{ fontWeight: '700' }}>{formatDMY(selectedLog.logDate || selectedLog.log_date || '')}</Text> • 
                   ආරම්භය: <Text style={{ fontWeight: '700' }}>{selectedLog.startTime || selectedLog.start_time || '-'}</Text> • 
@@ -749,5 +777,18 @@ const styles = StyleSheet.create({
   selectedPointDetails: {
     fontSize: 12,
     color: '#1E293B',
+  },
+  motherLoggedPill: {
+    backgroundColor: '#FDF2F8',
+    borderColor: '#F472B6',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  motherLoggedPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#DB2777',
   },
 });

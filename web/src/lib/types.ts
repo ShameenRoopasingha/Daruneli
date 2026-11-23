@@ -1,6 +1,6 @@
 // Data models for MOH & PHNS Supervision Portal
 
-export type OfficerRole = 'MOH' | 'PHNS' | 'PHM';
+export type OfficerRole = 'MOH' | 'PHNS' | 'PHM' | 'MOTHER';
 
 export interface UserProfile {
   id: string;
@@ -79,6 +79,7 @@ export interface EscalationAlert {
   }[];
   riskFactors?: string[];
   dangerSigns?: string[];
+  source?: 'PHM_APP' | 'MOTHER_PORTAL';
   voiceNoteUrl?: string | null;
   voiceNoteDurationSec?: number | null;
   gpsLat?: number | null;

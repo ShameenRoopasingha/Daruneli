@@ -202,6 +202,7 @@ export interface KickLogInput {
   duration_minutes?: number | null;
   reducedMovementFlag?: number;
   reduced_movement_flag?: number;
+  source?: 'PHM_APP' | 'MOTHER_PORTAL';
 }
 
 export interface KickAnalysisResult {

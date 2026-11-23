@@ -203,6 +203,7 @@ export const CREATE_TABLES_SQL = `
     kick_count INTEGER NOT NULL DEFAULT 10,
     duration_minutes INTEGER,
     reduced_movement_flag INTEGER NOT NULL DEFAULT 0,
+    source TEXT NOT NULL DEFAULT 'PHM_APP',
     is_dirty INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),

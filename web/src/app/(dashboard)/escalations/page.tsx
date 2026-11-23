@@ -217,6 +217,11 @@ export default function EscalationRadarPage() {
                       >
                         {alert.status}
                       </span>
+                      {alert.source === 'MOTHER_PORTAL' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300 border border-pink-300 dark:border-pink-800">
+                          📱 Self-Logged by Mother
+                        </span>
+                      )}
                     </div>
 
                     <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
@@ -275,6 +280,11 @@ export default function EscalationRadarPage() {
                   <span className="text-xs text-slate-500 font-mono">
                     {activeAlert.eligibleFamilyNo}
                   </span>
+                  {activeAlert.source === 'MOTHER_PORTAL' && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300 border border-pink-300 dark:border-pink-800">
+                      📱 Self-Logged by Mother
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-lg font-black text-slate-900 dark:text-white mt-1">
                   {activeAlert.targetName}

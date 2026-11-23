@@ -12,6 +12,7 @@ export interface FetalKickLog {
   kick_count: number;
   duration_minutes: number | null;
   reduced_movement_flag: number;
+  source?: 'PHM_APP' | 'MOTHER_PORTAL';
   is_dirty?: number;
   created_at: string;
   updated_at: string;
@@ -55,20 +56,22 @@ export async function addKickLog(data: {
   duration_minutes?: number | null;
   reduced_movement_flag?: number;
   phm_area_id?: string;
+  source?: 'PHM_APP' | 'MOTHER_PORTAL';
 }): Promise<string> {
   const db = await getDatabase();
   const id = Crypto.randomUUID();
   const areaId = data.phm_area_id || DEFAULT_PHM_AREA_ID;
   const count = data.kick_count ?? 10;
   const reduced = data.reduced_movement_flag ?? 0;
+  const source = data.source || 'PHM_APP';
   const now = new Date().toISOString();
 
   await db.runAsync(
     `INSERT INTO fetal_kick_logs (
       id, phm_area_id, pregnancy_id, log_date, start_time,
       tenth_kick_time, kick_count, duration_minutes, reduced_movement_flag,
-      is_dirty, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      source, is_dirty, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     [
       id,
       areaId,
@@ -79,6 +82,7 @@ export async function addKickLog(data: {
       count,
       data.duration_minutes ?? null,
       reduced,
+      source,
       now,
       now,
     ]
