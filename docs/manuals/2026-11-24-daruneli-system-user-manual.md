@@ -62,7 +62,9 @@ flowchart LR
         Zod["🔒 <b>Zod Schema Gate</b><br/>(100% Validation Layer)"]
         Prisma["⚡ <b>Prisma ORM & HMAC Auth</b><br/>(Type-Safe Security)"]
         CloudDB[("🗄️ <b>PostgreSQL Cloud DB</b><br/>(Supabase Enterprise)")]
-        Sync ==> Zod ==> Prisma ==> CloudDB
+        Sync ==> Zod
+        Zod ==> Prisma
+        Prisma ==> CloudDB
     end
 
     subgraph WebCol ["💻 3. අධීක්ෂණ සහ මව්වරුන්ගේ ද්වාර (Web Portals)"]
@@ -75,9 +77,9 @@ flowchart LR
         MotherPortal ==> Mother
     end
 
-    App <===>|නොබැඳි ද්වි-දිශා Sync| Sync
-    CloudDB <===>|තත්‍ය කාලීන සායනික දත්ත| Dash
-    CloudDB <===>|ගුප්තකේතන සැසි (Sessions)| MotherPortal
+    App <==>|"නොබැඳි ද්වි-දිශා Sync"| Sync
+    CloudDB <==>|"තත්‍ය කාලීන සායනික දත්ත"| Dash
+    CloudDB <==>|"ගුප්තකේතන සැසි"| MotherPortal
 ```
 
 ### පද්ධතියේ ප්‍රධාන සංරචක 3:
@@ -151,9 +153,9 @@ flowchart LR
 ```mermaid
 flowchart LR
     Screening["🩺 <b>සායනික පරීක්ෂාව</b><br/>(BP, Vitals, Urine, Symptoms)"] ==> Evaluate{"<b>ස්වයංක්‍රීය<br/>ඇගයීම</b>"}
-    Evaluate -->|BP > 140/90 හෝ Albumin ++| Red["🔴 <b>රතු අවදානම (RED Risk)</b><br/>හදිසි රෝහල්ගත කිරීම (1990 Ambulance)"]
-    Evaluate -->|වයස < 18 / > 35, Hb < 10| Yellow["🟡 <b>කහ අවදානම (YELLOW Risk)</b><br/>විශේෂඥ සායන අධීක්ෂණය"]
-    Evaluate -->|සාමාන්‍ය පරාසයේ පවතී| Green["🟢 <b>සාමාන්‍ය (GREEN Normal)</b><br/>සුපුරුදු සායන හා ගෘහ චාරිකා"]
+    Evaluate -->|"BP > 140/90 හෝ Albumin ++"| Red["🔴 <b>රතු අවදානම (RED Risk)</b><br/>හදිසි රෝහල්ගත කිරීම (1990 Ambulance)"]
+    Evaluate -->|"වයස අවුරුදු 18 ට අඩු හෝ 35 ට වැඩි / Hb < 10"| Yellow["🟡 <b>කහ අවදානම (YELLOW Risk)</b><br/>විශේෂඥ සායන අධීක්ෂණය"]
+    Evaluate -->|"සාමාන්‍ය පරාසයේ පවතී"| Green["🟢 <b>සාමාන්‍ය (GREEN Normal)</b><br/>සුපුරුදු සායන හා ගෘහ චාරිකා"]
     Red ==> Alert["🚨 <b>MOH පුවරුවට ක්ෂණික Alert</b>"]
 ```
 
@@ -336,8 +338,8 @@ Mother Portal ➔ [Cardiff Kick Tracker]
 flowchart LR
     Start["🌅 <b>උදෑසන 9.00</b><br/>චලන ගණනය ඇරඹීම"] ==> Log["🤰 <b>කලල චලනයක්<br/>සටහන් කිරීම</b><br/>(Tap to Count Kick)"]
     Log ==> Check{"<b>චලන 10<br/>සම්පූර්ණද?</b>"}
-    Check -->|ඔව් (පැය 12 තුළ)| Safe["🟢 <b>නිරෝගී තත්ත්වය</b><br/>දෛනික ඉලක්කය සම්පූර්ණයි"]
-    Check -->|නැත (සවස 9.00 ට පෙර < 10)| Danger["🔴 <b>හදිසි අනතුරු ඇඟවීම</b><br/>වහාම රෝහල්ගත වන්න!"]
+    Check -->|"ඔව් (පැය 12 තුළ)"| Safe["🟢 <b>නිරෝගී තත්ත්වය</b><br/>දෛනික ඉලක්කය සම්පූර්ණයි"]
+    Check -->|"නැත (චලන 10 ට අඩු)"| Danger["🔴 <b>හදිසි අනතුරු ඇඟවීම</b><br/>වහාම රෝහල්ගත වන්න!"]
     Danger ==> Alert["🚨 <b>MOH / PHM වෙත ක්ෂණික Alert</b>"]
 ```
 
