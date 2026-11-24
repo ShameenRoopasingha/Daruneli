@@ -165,24 +165,24 @@ def build_full_html_document(html_body: str, title: str, css_styles: str) -> str
       theme: 'neutral',
       securityLevel: 'loose',
       fontFamily: 'Inter, "Noto Sans Sinhala", "Iskoola Pota", "Nirmala UI", sans-serif',
-      fontSize: 18,
+      fontSize: 20,
       flowchart: {{
         useMaxWidth: false,
         htmlLabels: true,
         curve: 'basis',
-        nodeSpacing: 45,
-        rankSpacing: 45,
-        padding: 14
+        nodeSpacing: 50,
+        rankSpacing: 50,
+        padding: 16
       }},
       gantt: {{
-        fontSize: 14,
-        sectionFontSize: 15,
+        fontSize: 16,
+        sectionFontSize: 16,
         numberSectionStyles: 5,
         axisFormat: '%d/%m',
         topPadding: 45,
         bottomPadding: 45,
-        barHeight: 24,
-        barGap: 6
+        barHeight: 26,
+        barGap: 8
       }}
     }});
   }}

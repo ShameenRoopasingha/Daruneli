@@ -44,39 +44,40 @@
 "දරුනැලි (Daruneli)" පද්ධතිය යනු ශ්‍රී ලංකාවේ ප්‍රාථමික මාතෘ සහ ළමා සෞඛ්‍ය (Maternal and Child Health - MCH) සේවාවන් ඩිජිටල්කරණය කිරීම සඳහා නිර්මාණය කරන ලද නවීන, ත්‍රිත්ව-ස්ථර තොරතුරු පද්ධතියකි. පවුල් සෞඛ්‍ය කාර්යාංශයේ (Family Health Bureau - FHB) මාර්ගෝපදේශ සහ ලෝක සෞඛ්‍ය සංවිධානයේ (WHO) ප්‍රමිතීන්ට අනුකූලව මෙම පද්ධතිය ගොඩනගා ඇත.
 
 ```mermaid
-flowchart TB
-    subgraph Layer1 ["1. පරිශීලක සහ ක්ෂේත්‍ර අතුරුමුහුණත් (User & Field Applications)"]
-        direction LR
-        subgraph MobileApp ["📱 ක්ෂේත්‍ර PHM යෙදුම (Mobile App)"]
-            PHM["👩‍⚕️ පවුල් සෞඛ්‍ය සේවා නිලධාරිනිය"] --> App["Daruneli Mobile (React Native + SQLite)"]
-            App --> OfflineDB[("💾 100% Offline SQLite")]
-            App --> QRScan["📷 Digital Clinic Pass QR Scanner"]
-        end
-        subgraph Portals ["💻 අධීක්ෂණ හා මහජන ද්වාර (Web Portals)"]
-            Dashboard["💻 MOH Dashboard (Next.js 14)"] --> Doctor["👨‍⚕️ MOH වෛද්‍යවරුන් / PHNS"]
-            MotherPortal["📱 Mother Companion Portal (PWA)"] --> Mother["🤰 ගර්භණී මව්වරුන් / භාරකරුවන්"]
-        end
+flowchart LR
+    subgraph MobileCol ["📱 1. ක්ෂේත්‍ර ජංගම පද්ධතිය (PHM Mobile)"]
+        direction TB
+        PHM["👩‍⚕️ <b>පවුල් සෞඛ්‍ය සේවා නිලධාරිනිය</b><br/>(Field PHM Officer)"]
+        App["📱 <b>Daruneli Mobile App</b><br/>(React Native Expo Core)"]
+        OfflineDB[("💾 <b>100% Offline SQLite</b><br/>(Local Storage Gate)")]
+        QRScan["📷 <b>Digital Clinic Pass Scanner</b><br/>(Camera QR Module)"]
+        PHM ==> App
+        App --> OfflineDB
+        App --> QRScan
     end
 
-    subgraph Layer2 ["2. ආරක්ෂණ සහ වලාකුළු මධ්‍යස්ථානය (Security & Cloud Hub)"]
-        direction LR
-        subgraph Gate ["🛡️ ආරක්ෂණ හා වලංගුකරණ දොරටුව"]
-            Sync["🔄 Sync Engine & Conflict Resolver"]
-            Zod["🔒 Zod Schema Validation"]
-            HMAC["🔑 HMAC-SHA256 Token Auth"]
-            Sync --> Zod --> HMAC
-        end
-        subgraph Backend ["☁️ මධ්‍යම දත්ත ගබඩාව"]
-            Prisma["⚡ Prisma ORM (v7.10 Type-Safe Layer)"]
-            DB[("🗄️ Supabase PostgreSQL Enterprise")]
-            Prisma --> DB
-        end
+    subgraph CloudCol ["🛡️ 2. ආරක්ෂණ සහ වලාකුළු මධ්‍යස්ථානය (Security Hub)"]
+        direction TB
+        Sync["🔄 <b>Sync & Conflict Resolver</b><br/>(Background Auto-Sync)"]
+        Zod["🔒 <b>Zod Schema Gate</b><br/>(100% Validation Layer)"]
+        Prisma["⚡ <b>Prisma ORM & HMAC Auth</b><br/>(Type-Safe Security)"]
+        CloudDB[("🗄️ <b>PostgreSQL Cloud DB</b><br/>(Supabase Enterprise)")]
+        Sync ==> Zod ==> Prisma ==> CloudDB
     end
 
-    App <==>|ද්වි-දිශා Offline Sync| Sync
-    HMAC <==> Prisma
-    DB <==>|Secure HTTPS REST| Dashboard
-    DB <==>|Encrypted Session| MotherPortal
+    subgraph WebCol ["💻 3. අධීක්ෂණ සහ මව්වරුන්ගේ ද්වාර (Web Portals)"]
+        direction TB
+        Dash["💻 <b>MOH Supervision Dashboard</b><br/>(Next.js 14 Web Portal)"]
+        Doctor["👨‍⚕️ <b>MOH වෛද්‍යවරුන් / PHNS</b><br/>(Clinical Supervision)"]
+        MotherPortal["📱 <b>Mother Companion Portal</b><br/>(Progressive Web App)"]
+        Mother["🤰 <b>ගර්භණී මව්වරුන් / භාරකරුවන්</b><br/>(Kick Tracker / Pass)"]
+        Dash ==> Doctor
+        MotherPortal ==> Mother
+    end
+
+    App <===>|නොබැඳි ද්වි-දිශා Sync| Sync
+    CloudDB <===>|තත්‍ය කාලීන සායනික දත්ත| Dash
+    CloudDB <===>|ගුප්තකේතන සැසි (Sessions)| MotherPortal
 ```
 
 ### පද්ධතියේ ප්‍රධාන සංරචක 3:
@@ -147,6 +148,15 @@ flowchart TB
    - 🟡 **කහ අවදානම (YELLOW Moderate Risk):** මවගේ වයස අවුරුදු 18 ට අඩු හෝ 35 ට වැඩි වීම, රක්තහීනතාවය (Hb < 10 g/dL), බර වැඩිවීම අඩුවීම.
    - 🟢 **කොළ (GREEN Normal):** සාමාන්‍ය ප්‍රගතිය.
 
+```mermaid
+flowchart LR
+    Screening["🩺 <b>සායනික පරීක්ෂාව</b><br/>(BP, Vitals, Urine, Symptoms)"] ==> Evaluate{"<b>ස්වයංක්‍රීය<br/>ඇගයීම</b>"}
+    Evaluate -->|BP > 140/90 හෝ Albumin ++| Red["🔴 <b>රතු අවදානම (RED Risk)</b><br/>හදිසි රෝහල්ගත කිරීම (1990 Ambulance)"]
+    Evaluate -->|වයස < 18 / > 35, Hb < 10| Yellow["🟡 <b>කහ අවදානම (YELLOW Risk)</b><br/>විශේෂඥ සායන අධීක්ෂණය"]
+    Evaluate -->|සාමාන්‍ය පරාසයේ පවතී| Green["🟢 <b>සාමාන්‍ය (GREEN Normal)</b><br/>සුපුරුදු සායන හා ගෘහ චාරිකා"]
+    Red ==> Alert["🚨 <b>MOH පුවරුවට ක්ෂණික Alert</b>"]
+```
+
 ---
 
 ### 2.5 ළමා ලියාපදිංචිය, WHO ප්‍රස්ථාර සහ පෝෂණ අධීක්ෂණය
@@ -169,15 +179,23 @@ flowchart TB
 දරුවාගේ උපන් දිනය පදනම් කරගෙන ජාතික ප්‍රතිශක්තිකරණ වැඩසටහනේ (EPI) සියලුම එන්නත් ස්වයංක්‍රීයව උපලේඛනගත වේ:
 
 ```mermaid
-flowchart LR
-    Birth["උපතේදී: BCG"] --> M2["මාස 2: Pentavalent 1 + OPV 1 + fIPV 1"]
-    M2 --> M4["මාස 4: Pentavalent 2 + OPV 2"]
-    M4 --> M6["මාස 6: Pentavalent 3 + OPV 3 + fIPV 2"]
-    M6 --> M9["මාස 9: MMR 1"]
-    M9 --> M12["මාස 12: Live JE"]
-    M12 --> M18["මාස 18: DPT Booster + OPV 4"]
-    M18 --> Y3["අවුරුදු 3: MMR 2"]
-    Y3 --> Y5["අවුරුදු 5: DT + OPV 5"]
+flowchart TB
+    subgraph Stage1 ["👶 අදියර 1: ළදරු අවධිය (මාස 0 සිට 6 දක්වා)"]
+        direction LR
+        Birth["💉 <b>උපතේදී</b><br/>BCG එන්නත"] ==> M2["💉 <b>මාස 2</b><br/>Pentavalent 1<br/>OPV 1 + fIPV 1"]
+        M2 ==> M4["💉 <b>මාස 4</b><br/>Pentavalent 2<br/>OPV 2"]
+        M4 ==> M6["💉 <b>මාස 6</b><br/>Pentavalent 3<br/>OPV 3 + fIPV 2"]
+    end
+
+    subgraph Stage2 ["🧒 අදියර 2: ළමා අවධිය (මාස 9 සිට අවුරුදු 5 දක්වා)"]
+        direction LR
+        M9["💉 <b>මාස 9</b><br/>MMR 1"] ==> M12["💉 <b>මාස 12</b><br/>Live JE"]
+        M12 ==> M18["💉 <b>මාස 18</b><br/>DPT Booster<br/>OPV 4"]
+        M18 ==> Y3["💉 <b>අවුරුදු 3</b><br/>MMR 2"]
+        Y3 ==> Y5["💉 <b>අවුරුදු 5</b><br/>DT + OPV 5"]
+    end
+
+    Stage1 ===> Stage2
 ```
 
 - සායනයේදී එන්නත ලබාදුන් පසු අදාළ එන්නත ඉදිරියේ **"ලබාදුන්නා (Administered)"** ලෙස සටහන් කරන්න.
@@ -313,6 +331,15 @@ Mother Portal ➔ [Cardiff Kick Tracker]
 1. සෑම දිනකම උදෑසන 9.00 න් පසු දරුවා දඟලන හෝ පයින් ගසන සෑම වාරයකදීම තිරයේ ඇති **"කලල චලනයක් සටහන් කරන්න (Tap to Log Kick)"** බොත්තම ඔබන්න.
 2. දෛනික ඉලක්කය වන **චලන 10 සම්පූර්ණ වූ වහාම** පද්ධතිය කොළ පැහැති සුබපැතුම් පණිවිඩයක් ලබාදෙයි.
 3. ⚠️ **ක්ෂණික රතු අනතුරු ඇඟවීම (Emergency Danger Alert):** සවස 9.00 වන විටත් චලන 10 සම්පූර්ණ නොවී ඇත්නම් හෝ චලනයන්ගේ හදිසි අඩුවීමක් සිදුවුවහොත්, තිරය රතු පැහැ ගැන්වී වහාම රෝහල්ගත වන ලෙස උපදෙස් ලබාදෙන අතර, MOH පද්ධතියට සහ PHM නිලධාරිනියට ස්වයංක්‍රීය අනතුරු ඇඟවීමක් යොමු කෙරේ.
+
+```mermaid
+flowchart LR
+    Start["🌅 <b>උදෑසන 9.00</b><br/>චලන ගණනය ඇරඹීම"] ==> Log["🤰 <b>කලල චලනයක්<br/>සටහන් කිරීම</b><br/>(Tap to Count Kick)"]
+    Log ==> Check{"<b>චලන 10<br/>සම්පූර්ණද?</b>"}
+    Check -->|ඔව් (පැය 12 තුළ)| Safe["🟢 <b>නිරෝගී තත්ත්වය</b><br/>දෛනික ඉලක්කය සම්පූර්ණයි"]
+    Check -->|නැත (සවස 9.00 ට පෙර < 10)| Danger["🔴 <b>හදිසි අනතුරු ඇඟවීම</b><br/>වහාම රෝහල්ගත වන්න!"]
+    Danger ==> Alert["🚨 <b>MOH / PHM වෙත ක්ෂණික Alert</b>"]
+```
 
 ---
 

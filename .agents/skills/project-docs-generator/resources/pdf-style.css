@@ -264,6 +264,27 @@ pre code {
   margin: 0 auto;
 }
 
+.mermaid .nodeLabel {
+  font-size: 11pt !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+}
+
+.mermaid .cluster-label span,
+.mermaid .cluster-label text {
+  font-size: 12pt !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+}
+
+.mermaid .edgeLabel {
+  font-size: 10pt !important;
+  font-weight: 600 !important;
+  background-color: #ffffff !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+}
+
 /* Dividers & Lists */
 hr {
   border: none;
