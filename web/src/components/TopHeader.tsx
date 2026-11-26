@@ -29,13 +29,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({ onToggleSidebar }) => {
         </button>
 
         <div className="hidden sm:flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-semibold text-slate-700 dark:text-slate-300">
-          <div className="relative w-3.5 h-5 shrink-0 opacity-90">
+          <div className="relative w-3.5 h-5 shrink-0 opacity-95">
             <Image
               src="/images/sri-lanka-emblem.png"
               alt="State Emblem of Sri Lanka"
               fill
-              sizes="14px"
+              sizes="48px"
               className="object-contain"
+              unoptimized
             />
           </div>
           <span>{todayFormatted}</span>

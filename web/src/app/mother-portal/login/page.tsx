@@ -147,15 +147,28 @@ export default function MotherLoginPage() {
       <div className="w-full max-w-sm mx-auto bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-100 dark:border-slate-800">
         {/* Brand Header */}
         <div className="text-center mb-6">
-          <div className="flex justify-center mb-2">
-            <div className="relative w-16 h-16">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <div className="relative w-12 h-16 shrink-0 drop-shadow-sm">
               <Image
-                src="/images/daruneli-icon.png"
-                alt="Daruneli"
+                src="/images/sri-lanka-emblem.png"
+                alt="State Emblem of Sri Lanka"
                 fill
-                sizes="64px"
+                sizes="96px"
                 className="object-contain"
                 priority
+                unoptimized
+              />
+            </div>
+            <div className="w-px h-10 bg-slate-200 dark:bg-slate-700" />
+            <div className="relative w-14 h-14 shrink-0 drop-shadow-sm">
+              <Image
+                src="/images/daruneli-emblem.png"
+                alt="Daruneli Emblem"
+                fill
+                sizes="112px"
+                className="object-contain"
+                priority
+                unoptimized
               />
             </div>
           </div>
@@ -273,20 +286,26 @@ export default function MotherLoginPage() {
       </div>
 
       {/* Official Government & Bitgard Footer */}
-      <footer className="text-center mt-6 space-y-1">
-        <div className="flex items-center justify-center gap-1.5 opacity-80">
-          <div className="relative w-4 h-6">
+      <footer className="text-center mt-6 space-y-1.5 pb-2">
+        <div className="flex items-center justify-center gap-2">
+          <div className="relative w-5 h-7 shrink-0 opacity-95">
             <Image
               src="/images/sri-lanka-emblem.png"
-              alt="State Emblem"
+              alt="State Emblem of Sri Lanka"
               fill
-              sizes="16px"
+              sizes="64px"
               className="object-contain"
+              unoptimized
             />
           </div>
-          <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-            {t.brand.ministry}
-          </span>
+          <div className="text-left">
+            <span className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider leading-tight">
+              {t.brand.ministry}
+            </span>
+            <span className="block text-[10px] text-teal-700 dark:text-teal-400 font-semibold leading-tight">
+              Family Health Bureau (FHB) • Sri Lanka
+            </span>
+          </div>
         </div>
         <p className="text-[10px] text-slate-400 font-medium">{t.brand.poweredBy}</p>
       </footer>
